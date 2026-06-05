@@ -22,5 +22,6 @@ urlpatterns = [
     path("drp/<int:pk>/supprimer/", views.DRPDeleteView.as_view(), name="drp_delete"),
     path("drp/<int:drp_pk>/facture/", views.FactureCreateView.as_view(), name="facture_create"),
     path("analyse/", views.AnalyseComparativeView.as_view(), name="analyse_comparative"),
+    path("proforma/<int:pk>/analyser-pdf/", views.AnalyserProformaPDFView.as_view(), name="proforma_analyser_pdf"),
     path("f/<uuid:token>/", views.SupplierProformaView.as_view(), name="supplier_proforma"),
 ]

@@ -1,9 +1,9 @@
 {% extends "drp/base.html" %}
-{% block title %}Analyse comparative des prix{% endblock %}
+{% block title %}Analyse IA — Prix par domaine{% endblock %}
 {% block saas_page_title %}Analyse IA — Prix par domaine{% endblock %}
 {% block saas_page_sub %}
 <p class="drp-topbar-sub d-none d-sm-block mb-0">
-  Comparaison des prix proforma fournisseurs vs montants réellement facturés, par domaine.
+  Identification du prix le plus abordable par domaine, basée sur les proformas fournisseurs.
 </p>
 {% endblock %}
 {% block saas_topbar_actions %}
@@ -16,7 +16,7 @@
 {% if not analyses %}
 <div class="alert alert-info border-0 shadow-sm">
   <i class="bi bi-info-circle me-2"></i>
-  Aucune donnée disponible. Créez des DRP, invitez des fournisseurs à soumettre leurs proformas, puis saisissez les factures réelles pour voir l'analyse.
+  Aucune donnée disponible. Des fournisseurs doivent soumettre leurs proformas sur des DRP actives pour voir l'analyse.
 </div>
 {% endif %}
 
@@ -25,46 +25,41 @@
   <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
     <div>
       <i class="bi bi-tags me-2 text-primary opacity-75"></i>
-      <span class="fw-semibold">{{ analyse.domaine.nom }}</span>
+      <span class="fw-semibold">{{ analyse.domaine_nom }}</span>
     </div>
     <div class="d-flex gap-2 flex-wrap">
       <span class="badge bg-secondary-subtle text-secondary border">
         {{ analyse.nb_proformas }} proforma{{ analyse.nb_proformas|pluralize }}
       </span>
-      <span class="badge {% if analyse.nb_factures > 0 %}bg-success-subtle text-success border-success{% else %}bg-light text-secondary border{% endif %} border">
-        {{ analyse.nb_factures }} facture{{ analyse.nb_factures|pluralize }}
+      {% if analyse.fournisseur_min %}
+      <span class="badge bg-success-subtle text-success border border-success fw-semibold">
+        <i class="bi bi-trophy-fill me-1"></i>Meilleur prix : {{ analyse.fournisseur_min }}
       </span>
-      {% if analyse.moy_ecart_pct is not None %}
-        <span class="badge {% if analyse.moy_ecart_pct > 5 %}bg-danger-subtle text-danger border-danger{% elif analyse.moy_ecart_pct > 0 %}bg-warning-subtle text-warning border-warning{% else %}bg-success-subtle text-success border-success{% endif %} border fw-semibold">
-          Écart moy. {% if analyse.moy_ecart_pct >= 0 %}+{% endif %}{{ analyse.moy_ecart_pct|floatformat:1 }}%
-        </span>
       {% endif %}
     </div>
   </div>
 
   <div class="card-body p-0">
+
     <!-- Statistiques rapides -->
-    {% if analyse.moy_proforma or analyse.moy_facture %}
+    {% if analyse.prix_min %}
     <div class="px-3 px-md-4 pt-3 pb-2">
       <div class="row g-3">
-        {% if analyse.moy_proforma %}
         <div class="col-sm-4">
-          <p class="text-secondary small mb-1">Prix moyen proforma</p>
-          <p class="fw-semibold mb-0">{{ analyse.moy_proforma|floatformat:0 }} FCFA</p>
+          <p class="text-secondary small mb-1">Prix le plus abordable</p>
+          <p class="fw-semibold mb-0 text-success">{{ analyse.prix_min|floatformat:0 }} FCFA</p>
+          <p class="text-secondary small mb-0">{{ analyse.fournisseur_min }}</p>
+        </div>
+        {% if analyse.prix_moy %}
+        <div class="col-sm-4">
+          <p class="text-secondary small mb-1">Prix moyen</p>
+          <p class="fw-semibold mb-0">{{ analyse.prix_moy|floatformat:0 }} FCFA</p>
         </div>
         {% endif %}
-        {% if analyse.moy_facture %}
+        {% if analyse.prix_max %}
         <div class="col-sm-4">
-          <p class="text-secondary small mb-1">Montant moyen facturé</p>
-          <p class="fw-semibold mb-0">{{ analyse.moy_facture|floatformat:0 }} FCFA</p>
-        </div>
-        {% endif %}
-        {% if analyse.moy_ecart_pct is not None %}
-        <div class="col-sm-4">
-          <p class="text-secondary small mb-1">Écart moyen</p>
-          <p class="fw-semibold mb-0 {% if analyse.moy_ecart_pct > 5 %}text-danger{% elif analyse.moy_ecart_pct > 0 %}text-warning{% else %}text-success{% endif %}">
-            {% if analyse.moy_ecart_pct >= 0 %}+{% endif %}{{ analyse.moy_ecart_pct|floatformat:1 }}%
-          </p>
+          <p class="text-secondary small mb-1">Prix le plus élevé</p>
+          <p class="fw-semibold mb-0 text-danger">{{ analyse.prix_max|floatformat:0 }} FCFA</p>
         </div>
         {% endif %}
       </div>
@@ -72,7 +67,7 @@
     <hr class="my-0">
     {% endif %}
 
-    <!-- Tableau détaillé -->
+    <!-- Tableau des proformas -->
     <div class="drp-table-wrap table-responsive">
       <table class="table table-hover align-middle mb-0">
         <thead>
@@ -80,30 +75,29 @@
             <th>DRP</th>
             <th>Fournisseur</th>
             <th class="text-end">Prix proforma</th>
-            <th class="text-end">Montant facturé</th>
-            <th class="text-end">Écart</th>
+            <th class="text-end">Délai</th>
+            <th class="text-center">Classement</th>
           </tr>
         </thead>
         <tbody>
           {% for ligne in analyse.lignes %}
-          <tr>
-            <td class="text-truncate" style="max-width:200px;" title="{{ ligne.drp_titre }}">{{ ligne.drp_titre }}</td>
-            <td class="fw-medium">{{ ligne.fournisseur_nom }}</td>
-            <td class="text-end">{{ ligne.prix_proforma|floatformat:0 }} FCFA</td>
-            <td class="text-end">
-              {% if ligne.montant_facture %}
-                {{ ligne.montant_facture|floatformat:0 }} FCFA
-              {% else %}
-                <span class="text-secondary fst-italic">Non saisie</span>
+          <tr {% if ligne.est_min %}class="table-success"{% endif %}>
+            <td class="text-truncate" style="max-width:180px;" title="{{ ligne.drp_titre }}">{{ ligne.drp_titre }}</td>
+            <td class="fw-medium">
+              {{ ligne.fournisseur_nom }}
+              {% if ligne.est_min %}
+              <i class="bi bi-trophy-fill text-success ms-1" title="Prix le plus abordable"></i>
               {% endif %}
             </td>
-            <td class="text-end fw-semibold">
-              {% if ligne.ecart_pct is not None %}
-                <span class="{% if ligne.ecart_pct > 5 %}text-danger{% elif ligne.ecart_pct > 0 %}text-warning{% else %}text-success{% endif %}">
-                  {% if ligne.ecart_pct >= 0 %}+{% endif %}{{ ligne.ecart_pct|floatformat:1 }}%
-                </span>
+            <td class="text-end fw-semibold {% if ligne.est_min %}text-success{% endif %}">
+              {{ ligne.prix|floatformat:0 }} FCFA
+            </td>
+            <td class="text-end text-secondary">{{ ligne.delai_jours }} j</td>
+            <td class="text-center">
+              {% if ligne.est_min %}
+              <span class="badge bg-success-subtle text-success border border-success">Le moins cher</span>
               {% else %}
-                <span class="text-secondary">—</span>
+              <span class="text-secondary small">—</span>
               {% endif %}
             </td>
           </tr>
@@ -112,15 +106,16 @@
       </table>
     </div>
 
-    <!-- Analyse IA -->
+    <!-- Recommandation IA -->
     {% if analyse.commentaire_ia %}
     <div class="px-3 px-md-4 py-3 border-top bg-light rounded-bottom">
       <p class="small fw-semibold text-primary mb-2">
-        <i class="bi bi-stars me-1"></i>Analyse IA
+        <i class="bi bi-stars me-1"></i>Recommandation IA
       </p>
       <p class="small text-secondary mb-0" style="line-height:1.7;">{{ analyse.commentaire_ia }}</p>
     </div>
     {% endif %}
+
   </div>
 </div>
 {% endfor %}

@@ -1,4 +1,5 @@
 {% extends "drp/base.html" %}
+{% load static %}
 {% block title %}{{ drp.titre }}{% endblock %}
 {% block saas_page_title %}{{ drp.titre }}{% endblock %}
 {% block saas_page_sub %}
@@ -68,7 +69,7 @@
   </div>
 </div>
 
-{% if drp.statut == "en_cours" and proformas %}
+{% if drp.statut == "en_cours" and proformas_classement %}
 <div class="card drp-card mb-4">
   <div class="card-header"><i class="bi bi-hand-thumbs-up me-2 text-success opacity-75"></i>Choisir le fournisseur retenu</div>
   <div class="card-body">
@@ -116,28 +117,61 @@
 </div>
 
 <div class="card drp-card mb-4">
-  <div class="card-header"><i class="bi bi-receipt me-2 text-primary opacity-75"></i>Toutes les offres</div>
+  <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+    <span><i class="bi bi-receipt me-2 text-primary opacity-75"></i>Toutes les offres</span>
+    {% if proformas_classement %}
+    <div class="drp-offre-legend small mb-0">
+      <span class="drp-offre-legend-item"><span class="drp-offre-swatch drp-offre-rank-1" aria-hidden="true"></span>1<sup>re</sup></span>
+      <span class="drp-offre-legend-item"><span class="drp-offre-swatch drp-offre-rank-2" aria-hidden="true"></span>2<sup>e</sup></span>
+      <span class="drp-offre-legend-item"><span class="drp-offre-swatch drp-offre-rank-3" aria-hidden="true"></span>3<sup>e</sup></span>
+      <span class="text-secondary ms-1">— classement selon pondération prix ({{ drp.poids_prix }} %) / délai ({{ drp.poids_delai }} %)</span>
+    </div>
+    {% endif %}
+  </div>
   <div class="drp-table-wrap table-responsive">
-    <table class="table table-hover mb-0 align-middle">
+    <table class="table table-hover mb-0 align-middle drp-offres-table">
       <thead>
         <tr>
+          <th class="drp-offre-rang-col">Rang</th>
           <th>Fournisseur</th>
           <th>Prix</th>
           <th>Délai</th>
           <th>PDF</th>
+          <th>Analyse IA</th>
         </tr>
       </thead>
       <tbody>
-        {% for p in proformas %}
-        <tr>
+        {% for item in proformas_classement %}
+        {% with p=item.proforma %}
+        <tr class="drp-offre-row{% if item.rang %} drp-offre-rank-{{ item.rang }}{% endif %}">
+          <td class="drp-offre-rang-col">
+            {% if item.rang == 1 %}
+              <span class="drp-offre-badge drp-offre-badge--1" title="Meilleure offre">1<sup>re</sup></span>
+            {% elif item.rang == 2 %}
+              <span class="drp-offre-badge drp-offre-badge--2" title="2e offre">2<sup>e</sup></span>
+            {% elif item.rang == 3 %}
+              <span class="drp-offre-badge drp-offre-badge--3" title="3e offre">3<sup>e</sup></span>
+            {% else %}
+              <span class="text-secondary">—</span>
+            {% endif %}
+          </td>
           <td class="fw-medium">{{ p.invitation.fournisseur.nom }}</td>
           <td>{{ p.prix }} FCFA</td>
           <td>{{ p.delai_jours }} j</td>
           <td><a href="{{ p.fichier.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary rounded-pill">Voir</a></td>
+          <td>
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary rounded-pill btn-analyser-pdf"
+                    data-url="{% url 'drp:proforma_analyser_pdf' p.pk %}"
+                    data-fournisseur="{{ p.invitation.fournisseur.nom }}">
+              <i class="bi bi-robot me-1"></i>Analyser
+            </button>
+          </td>
         </tr>
+        {% endwith %}
         {% empty %}
         <tr>
-          <td colspan="4" class="text-center py-4 text-secondary">Aucune proforma.</td>
+          <td colspan="6" class="text-center py-4 text-secondary">Aucune proforma.</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -168,4 +202,32 @@
     </table>
   </div>
 </div>
+
+<!-- Modal analyse PDF -->
+<div class="modal fade" id="modalAnalysePDF" tabindex="-1" aria-labelledby="modalAnalysePDFLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalAnalysePDFLabel"><i class="bi bi-robot me-2 text-primary"></i>Analyse IA — <span id="modalFournisseurNom"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body" id="modalAnalyseBody">
+        <div class="text-center py-4" id="modalSpinner">
+          <div class="spinner-border text-primary" role="status"></div>
+          <p class="mt-3 text-secondary">Lecture du PDF en cours…</p>
+        </div>
+        <div id="modalAnalyseTexte" class="d-none" style="white-space:pre-wrap;line-height:1.7;"></div>
+        <div id="modalAnalyseErreur" class="d-none alert alert-danger"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'drp/proforma-analyse.js' %}"></script>
 {% endblock %}

@@ -7,10 +7,51 @@
 {% endblock %}
 {% block content %}
 
-<div class="card drp-card mb-4">
+<div class="drp-stat-grid mb-4">
+  <a href="{% url 'drp:dashboard' %}" class="drp-stat-card{% if not filtre_statut %} is-active{% endif %}">
+    <div class="drp-stat-icon drp-stat-icon--primary"><i class="bi bi-folder2-open"></i></div>
+    <div>
+      <p class="drp-stat-label">Total DRP</p>
+      <p class="drp-stat-value">{{ total_drp }}</p>
+    </div>
+  </a>
+  <a href="{% url 'drp:dashboard' %}?statut=en_cours" class="drp-stat-card{% if filtre_statut == 'en_cours' %} is-active{% endif %}">
+    <div class="drp-stat-icon drp-stat-icon--sky"><i class="bi bi-hourglass-split"></i></div>
+    <div>
+      <p class="drp-stat-label">En cours</p>
+      <p class="drp-stat-value">{{ drp_en_cours }}</p>
+    </div>
+  </a>
+  <a href="{% url 'drp:dashboard' %}?statut=cloturee" class="drp-stat-card{% if filtre_statut == 'cloturee' %} is-active{% endif %}">
+    <div class="drp-stat-icon drp-stat-icon--slate"><i class="bi bi-check2-circle"></i></div>
+    <div>
+      <p class="drp-stat-label">Clôturées</p>
+      <p class="drp-stat-value">{{ drp_cloturees }}</p>
+    </div>
+  </a>
+  <a href="{% url 'drp:dashboard' %}?statut=annulee" class="drp-stat-card{% if filtre_statut == 'annulee' %} is-active{% endif %}">
+    <div class="drp-stat-icon drp-stat-icon--rose"><i class="bi bi-x-octagon"></i></div>
+    <div>
+      <p class="drp-stat-label">Annulées</p>
+      <p class="drp-stat-value">{{ drp_annulees }}</p>
+    </div>
+  </a>
+</div>
+
+<div class="card drp-card mb-4" id="drp-list">
   <div class="card-header border-0 pb-0 pt-3 px-3 px-md-4">
     <div class="drp-card-header-lead">Liste des demandes</div>
-    <div class="drp-card-header-muted">Titre, statut, date de clôture et nombre d’offres reçues.</div>
+    <div class="drp-card-header-muted">
+      {% if filtre_statut == 'en_cours' %}
+        Demandes en cours — titre, date de clôture et nombre d’offres reçues.
+      {% elif filtre_statut == 'cloturee' %}
+        Demandes clôturées — titre, date de clôture et nombre d’offres reçues.
+      {% elif filtre_statut == 'annulee' %}
+        Demandes annulées — titre, date de clôture et nombre d’offres reçues.
+      {% else %}
+        Titre, statut, date de clôture et nombre d’offres reçues.
+      {% endif %}
+    </div>
   </div>
   <div class="drp-table-wrap table-responsive">
     <table class="table table-hover align-middle">
@@ -25,7 +66,7 @@
       </thead>
       <tbody>
         {% for d in drps %}
-        <tr>
+        <tr class="drp-row-link" data-href="{% url 'drp:drp_detail' d.pk %}" role="link" tabindex="0" aria-label="Voir {{ d.titre }}">
           <td class="fw-semibold text-dark">{{ d.titre }}</td>
           <td>
             {% if d.statut == "en_cours" %}
@@ -46,16 +87,21 @@
           <td class="text-secondary small">{{ d.date_cloture|date:"d/m/Y H:i" }}</td>
           <td class="text-end text-nowrap">
             {% if d.statut == "en_cours" %}
-            <a href="{% url 'drp:drp_update' d.pk %}" class="btn btn-sm btn-outline-secondary me-1">Modifier</a>
+            <a href="{% url 'drp:drp_update' d.pk %}" class="btn btn-sm btn-outline-secondary me-1" onclick="event.stopPropagation()">Modifier</a>
             {% endif %}
-            <a href="{% url 'drp:drp_detail' d.pk %}" class="btn btn-sm btn-primary">Détail</a>
+            <a href="{% url 'drp:drp_detail' d.pk %}" class="btn btn-sm btn-primary" onclick="event.stopPropagation()">Détail</a>
           </td>
         </tr>
         {% empty %}
         <tr>
           <td colspan="5" class="text-center py-5 text-secondary">
             <i class="bi bi-inbox d-block fs-2 mb-2 opacity-25"></i>
-            Aucune DRP pour le moment. Créez votre première demande pour inviter les fournisseurs concernés.
+            {% if filtre_statut %}
+              Aucune DRP pour ce filtre.
+              <a href="{% url 'drp:dashboard' %}" class="d-block mt-2">Voir toutes les demandes</a>
+            {% else %}
+              Aucune DRP pour le moment. Créez votre première demande pour inviter les fournisseurs concernés.
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
@@ -63,35 +109,8 @@
     </table>
   </div>
 </div>
-
-<div class="drp-stat-grid">
-  <div class="drp-stat-card">
-    <div class="drp-stat-icon drp-stat-icon--primary"><i class="bi bi-folder2-open"></i></div>
-    <div>
-      <p class="drp-stat-label">Total DRP</p>
-      <p class="drp-stat-value">{{ total_drp }}</p>
-    </div>
-  </div>
-  <div class="drp-stat-card">
-    <div class="drp-stat-icon drp-stat-icon--sky"><i class="bi bi-hourglass-split"></i></div>
-    <div>
-      <p class="drp-stat-label">En cours</p>
-      <p class="drp-stat-value">{{ drp_en_cours }}</p>
-    </div>
-  </div>
-  <div class="drp-stat-card">
-    <div class="drp-stat-icon drp-stat-icon--slate"><i class="bi bi-check2-circle"></i></div>
-    <div>
-      <p class="drp-stat-label">Clôturées</p>
-      <p class="drp-stat-value">{{ drp_cloturees }}</p>
-    </div>
-  </div>
-  <div class="drp-stat-card">
-    <div class="drp-stat-icon drp-stat-icon--rose"><i class="bi bi-x-octagon"></i></div>
-    <div>
-      <p class="drp-stat-label">Annulées</p>
-      <p class="drp-stat-value">{{ drp_annulees }}</p>
-    </div>
-  </div>
-</div>
+{% endblock %}
+{% block extra_js %}
+{% load static %}
+<script src="{% static 'drp/dashboard.js' %}"></script>
 {% endblock %}

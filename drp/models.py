@@ -65,6 +65,14 @@ class DRP(models.Model):
         validators=[MinValueValidator(1)],
         help_text="Pondération du critère délai (1–100).",
     )
+    budget_previsionnel = models.DecimalField(
+        max_digits=16,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.01"))],
+        verbose_name="Budget prévisionnel (FCFA)",
+    )
     date_cloture = models.DateTimeField(
         verbose_name="Date de clôture",
         help_text="Les fournisseurs ne peuvent plus soumettre de proforma après cette date.",

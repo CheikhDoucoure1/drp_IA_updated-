@@ -9,7 +9,8 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/inter@5.2.5/index.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" crossorigin="anonymous">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-  <link rel="stylesheet" href="{% static 'drp/theme.css' %}">
+  <link rel="stylesheet" href="{% static 'drp/theme.css' %}?v=6">
+  <link rel="icon" href="{% static 'drp/petrosen-logo.png' %}" type="image/png">
 </head>
 <body class="drp-body d-flex flex-column min-vh-100">
 {% if request.user.is_authenticated and show_buyer_nav %}
@@ -20,12 +21,9 @@
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#drpSidebar" aria-label="Fermer"></button>
       </div>
       <div class="offcanvas-body p-0 d-flex flex-column drp-sidebar-inner">
-        <a class="drp-sidebar-brand" href="{% url 'drp:dashboard' %}">
-          <span class="drp-sidebar-brand-mark">D</span>
-          <span>
-            <span class="drp-sidebar-brand-text">DRP</span>
-            <span class="drp-sidebar-brand-sub">Demandes de prix</span>
-          </span>
+        <a class="drp-sidebar-brand drp-sidebar-brand--logo" href="{% url 'drp:dashboard' %}">
+          {% include "drp/includes/brand_logo.html" with variant="sidebar" %}
+          <span class="drp-sidebar-brand-sub">Plateforme DRP</span>
         </a>
         <nav class="drp-sidebar-nav px-1">
           {% if request.resolver_match %}
@@ -95,9 +93,8 @@
       <div class="drp-saas-content">
 {% elif request.user.is_authenticated %}
   <header class="drp-minimal-bar">
-    <a class="drp-sidebar-brand text-decoration-none" href="{% url 'drp:login' %}">
-      <span class="drp-sidebar-brand-mark">D</span>
-      <span class="drp-sidebar-brand-text">DRP</span>
+    <a class="drp-sidebar-brand drp-sidebar-brand--logo drp-sidebar-brand--inline text-decoration-none" href="{% url 'drp:login' %}">
+      {% include "drp/includes/brand_logo.html" with variant="bar" %}
     </a>
     <div class="d-flex align-items-center gap-2">
       {% if request.user.is_superuser %}
@@ -112,9 +109,8 @@
   <main class="drp-public-main flex-grow-1">
 {% else %}
   <header class="drp-public-nav d-flex align-items-center justify-content-between">
-    <a class="drp-sidebar-brand text-decoration-none" href="{% url 'drp:login' %}">
-      <span class="drp-sidebar-brand-mark">D</span>
-      <span class="drp-sidebar-brand-text">DRP</span>
+    <a class="drp-sidebar-brand drp-sidebar-brand--logo drp-sidebar-brand--inline text-decoration-none" href="{% url 'drp:login' %}">
+      {% include "drp/includes/brand_logo.html" with variant="bar" %}
     </a>
   </header>
   <main class="drp-public-main flex-grow-1">
@@ -143,5 +139,6 @@
   {% if request.user.is_authenticated and show_buyer_nav %}
   <script src="{% static 'drp/sidebar-offcanvas.js' %}"></script>
   {% endif %}
+  {% block extra_js %}{% endblock %}
 </body>
 </html>

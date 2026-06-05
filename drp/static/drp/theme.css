@@ -7,7 +7,7 @@
   --drp-primary-soft: #eff6ff;
   --drp-surface: #ffffff;
   --drp-canvas: #f1f5f9;
-  --drp-sidebar-bg: #f8fafc;
+  --drp-sidebar-bg: #ffffff;
   --drp-muted: #64748b;
   --drp-text: #0f172a;
   --drp-border: rgba(15, 23, 42, 0.08);
@@ -37,9 +37,17 @@ body.drp-body {
 .drp-sidebar.offcanvas-lg {
   width: var(--drp-sidebar-w);
   border-right: 1px solid var(--drp-border) !important;
-  background: var(--drp-sidebar-bg);
+  background-color: #ffffff !important;
+  --bs-offcanvas-bg: #ffffff;
+  --bs-offcanvas-color: var(--drp-text);
   /* Panneau au-dessus du backdrop offcanvas (~1040), sinon clics inopérants */
   z-index: 1050;
+}
+
+.drp-sidebar .offcanvas-header,
+.drp-sidebar .offcanvas-body,
+.drp-sidebar-inner {
+  background-color: #ffffff !important;
 }
 
 @media (min-width: 992px) {
@@ -76,34 +84,55 @@ body.drp-body {
   color: var(--drp-text) !important;
 }
 
-.drp-sidebar-brand-mark {
-  width: 2.35rem;
-  height: 2.35rem;
-  border-radius: var(--drp-radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 0.9rem;
-  color: #fff;
-  background: linear-gradient(145deg, #2563eb, #4f46e5);
-  flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+.drp-sidebar-brand--logo {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding-bottom: 1.1rem;
 }
 
-.drp-sidebar-brand-text {
-  font-weight: 700;
-  font-size: 1.08rem;
-  letter-spacing: -0.035em;
-  line-height: 1.15;
+.drp-sidebar-brand--logo.drp-sidebar-brand--inline {
+  flex-direction: row;
+  align-items: center;
+  padding: 0;
+}
+
+.drp-brand-logo {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.drp-brand-logo--sidebar {
+  max-width: 9.25rem;
+  margin: 0 auto;
+}
+
+.drp-brand-logo--bar {
+  width: 7rem;
+  max-width: 38vw;
+}
+
+.drp-brand-logo--auth {
+  width: 10rem;
+  max-width: 65%;
+  margin: 0 auto 0.85rem;
 }
 
 .drp-sidebar-brand-sub {
   display: block;
   font-size: 0.68rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--drp-muted);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.drp-sidebar-brand--inline .drp-sidebar-brand-sub {
+  text-align: left;
 }
 
 .drp-sidebar-nav {
@@ -128,7 +157,7 @@ body.drp-body {
 }
 
 .drp-side-link:hover {
-  background: rgba(255, 255, 255, 0.85);
+  background: #f1f5f9;
   color: var(--drp-text) !important;
 }
 
@@ -169,7 +198,7 @@ body.drp-body {
   padding: 0.85rem 0.65rem;
   margin-top: auto;
   border-top: 1px solid var(--drp-border);
-  background: rgba(255, 255, 255, 0.45);
+  background-color: #ffffff;
   border-radius: var(--drp-radius-sm);
   margin-left: 0.25rem;
   margin-right: 0.25rem;
@@ -350,6 +379,12 @@ body.drp-body {
   }
 }
 
+a.drp-stat-card {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
 .drp-stat-card {
   background: var(--drp-surface);
   border: 1px solid var(--drp-border);
@@ -366,6 +401,22 @@ body.drp-body {
 .drp-stat-card:hover {
   box-shadow: var(--drp-shadow-md);
   border-color: rgba(var(--drp-primary-rgb), 0.14);
+  transform: translateY(-1px);
+}
+
+.drp-stat-card.is-active {
+  border-color: rgba(var(--drp-primary-rgb), 0.28);
+  box-shadow: 0 0 0 1px rgba(var(--drp-primary-rgb), 0.08), var(--drp-shadow-md);
+  background: linear-gradient(180deg, #fff 0%, var(--drp-primary-soft) 140%);
+}
+
+.drp-row-link {
+  cursor: pointer;
+}
+
+.drp-row-link:focus-visible {
+  outline: 2px solid rgba(var(--drp-primary-rgb), 0.45);
+  outline-offset: -2px;
 }
 
 .drp-stat-icon {
@@ -496,6 +547,114 @@ body.drp-body {
 .badge-drp-inactif {
   background: #f1f5f9;
   color: #64748b;
+}
+
+/* Podium des 3 meilleures offres (page détail DRP) */
+.drp-offre-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  font-weight: 500;
+  color: var(--drp-text);
+}
+
+.drp-offre-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.drp-offre-swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  flex-shrink: 0;
+}
+
+.drp-offre-rang-col {
+  width: 4.25rem;
+  white-space: nowrap;
+}
+
+.drp-offre-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.35em 0.55em;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.drp-offre-badge--1 {
+  background-color: #fde047 !important;
+  color: #713f12 !important;
+  border-color: #ca8a04 !important;
+}
+
+.drp-offre-badge--2 {
+  background-color: #cbd5e1 !important;
+  color: #1e293b !important;
+  border-color: #64748b !important;
+}
+
+.drp-offre-badge--3 {
+  background-color: #fdba74 !important;
+  color: #7c2d12 !important;
+  border-color: #ea580c !important;
+}
+
+/* Fond de ligne + barre latérale (priorité sur .table-hover Bootstrap) */
+.drp-table-wrap .drp-offres-table tbody tr.drp-offre-row.drp-offre-rank-1 > td {
+  background-color: #fef9c3;
+}
+
+.drp-table-wrap .drp-offres-table tbody tr.drp-offre-row.drp-offre-rank-1 > td:first-child {
+  box-shadow: inset 6px 0 0 #ca8a04;
+}
+
+.drp-table-wrap .drp-offres-table tbody tr.drp-offre-row.drp-offre-rank-2 > td {
+  background-color: #e2e8f0;
+}
+
+.drp-table-wrap .drp-offres-table tbody tr.drp-offre-row.drp-offre-rank-2 > td:first-child {
+  box-shadow: inset 6px 0 0 #64748b;
+}
+
+.drp-table-wrap .drp-offres-table tbody tr.drp-offre-row.drp-offre-rank-3 > td {
+  background-color: #ffedd5;
+}
+
+.drp-table-wrap .drp-offres-table tbody tr.drp-offre-row.drp-offre-rank-3 > td:first-child {
+  box-shadow: inset 6px 0 0 #ea580c;
+}
+
+.drp-table-wrap .drp-offres-table tbody tr.drp-offre-row.drp-offre-rank-1:hover > td {
+  background-color: #fef08a;
+}
+
+.drp-table-wrap .drp-offres-table tbody tr.drp-offre-row.drp-offre-rank-2:hover > td {
+  background-color: #cbd5e1;
+}
+
+.drp-table-wrap .drp-offres-table tbody tr.drp-offre-row.drp-offre-rank-3:hover > td {
+  background-color: #fed7aa;
+}
+
+.drp-offre-swatch.drp-offre-rank-1 {
+  background: #fde047;
+  border-color: #ca8a04;
+}
+
+.drp-offre-swatch.drp-offre-rank-2 {
+  background: #cbd5e1;
+  border-color: #64748b;
+}
+
+.drp-offre-swatch.drp-offre-rank-3 {
+  background: #fdba74;
+  border-color: #ea580c;
 }
 
 .drp-card-accent {

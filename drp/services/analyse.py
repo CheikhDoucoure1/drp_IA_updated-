@@ -1,147 +1,129 @@
 """
-Service d'analyse comparative des prix par domaine.
+Analyse IA des proformas fournisseurs par domaine.
 
-Pour chaque domaine, agrège les proformas fournisseurs et les factures réelles,
-puis appelle Claude pour produire une analyse en français.
+Pour chaque domaine ayant au moins un DRP, agrège tous les proformas soumis
+par les fournisseurs et demande à Claude d'identifier le prix le plus abordable.
 """
 
 from __future__ import annotations
 
+import base64
 import os
 from dataclasses import dataclass, field
 from decimal import Decimal
 
-from django.db.models import Avg, Count, Q
-
-from drp.models import Domaine, DRP, Facture, Proforma
-
 
 @dataclass
-class LigneComparaison:
+class LigneProforma:
     drp_titre: str
     fournisseur_nom: str
-    prix_proforma: Decimal
-    montant_facture: Decimal | None
-    ecart: Decimal | None          # facture − proforma
-    ecart_pct: float | None        # en %
+    prix: Decimal
+    delai_jours: int
+    est_min: bool = False
 
 
 @dataclass
 class AnalyseDomaine:
-    domaine: Domaine
-    lignes: list[LigneComparaison] = field(default_factory=list)
+    domaine_nom: str
+    lignes: list[LigneProforma] = field(default_factory=list)
     nb_proformas: int = 0
-    nb_factures: int = 0
-    moy_proforma: Decimal | None = None
-    moy_facture: Decimal | None = None
-    moy_ecart_pct: float | None = None
+    prix_min: Decimal | None = None
+    fournisseur_min: str | None = None
+    prix_max: Decimal | None = None
+    prix_moy: Decimal | None = None
     commentaire_ia: str = ""
 
 
-def _build_analyses(domaines=None) -> list[AnalyseDomaine]:
-    """Construit les données statistiques par domaine."""
-    if domaines is None:
-        domaines = Domaine.objects.all().order_by("nom")
+def _build_analyses() -> list[AnalyseDomaine]:
+    """Agrège les proformas par domaine."""
+    from drp.models import Domaine, Proforma
 
+    domaines = Domaine.objects.all().order_by("nom")
     analyses = []
+
     for domaine in domaines:
         proformas = (
             Proforma.objects.filter(invitation__drp__domaines=domaine)
             .select_related(
                 "invitation__fournisseur",
                 "invitation__drp",
-                "invitation__facture",
             )
-            .order_by("invitation__drp__titre", "prix")
+            .order_by("prix")
         )
 
-        lignes: list[LigneComparaison] = []
-        somme_proforma = Decimal("0")
-        somme_facture = Decimal("0")
-        nb_factures = 0
-
+        lignes: list[LigneProforma] = []
         for p in proformas:
-            try:
-                facture = p.invitation.facture
-                montant_facture = facture.montant
-                ecart = montant_facture - p.prix
-                ecart_pct = float(ecart / p.prix * 100) if p.prix else None
-                somme_facture += montant_facture
-                nb_factures += 1
-            except Facture.DoesNotExist:
-                montant_facture = None
-                ecart = None
-                ecart_pct = None
-
-            somme_proforma += p.prix
             lignes.append(
-                LigneComparaison(
+                LigneProforma(
                     drp_titre=p.invitation.drp.titre,
                     fournisseur_nom=p.invitation.fournisseur.nom,
-                    prix_proforma=p.prix,
-                    montant_facture=montant_facture,
-                    ecart=ecart,
-                    ecart_pct=ecart_pct,
+                    prix=p.prix,
+                    delai_jours=p.delai_jours,
                 )
             )
 
-        nb_proformas = len(lignes)
-        moy_proforma = (somme_proforma / nb_proformas) if nb_proformas else None
-        moy_facture = (somme_facture / nb_factures) if nb_factures else None
-        ecarts = [l.ecart_pct for l in lignes if l.ecart_pct is not None]
-        moy_ecart_pct = (sum(ecarts) / len(ecarts)) if ecarts else None
+        if not lignes:
+            continue
+
+        prix_list = [l.prix for l in lignes]
+        prix_min = min(prix_list)
+        prix_max = max(prix_list)
+        prix_moy = sum(prix_list) / len(prix_list)
+
+        for ligne in lignes:
+            if ligne.prix == prix_min:
+                ligne.est_min = True
+
+        fournisseur_min = next(l.fournisseur_nom for l in lignes if l.est_min)
 
         analyses.append(
             AnalyseDomaine(
-                domaine=domaine,
+                domaine_nom=domaine.nom,
                 lignes=lignes,
-                nb_proformas=nb_proformas,
-                nb_factures=nb_factures,
-                moy_proforma=moy_proforma,
-                moy_facture=moy_facture,
-                moy_ecart_pct=moy_ecart_pct,
+                nb_proformas=len(lignes),
+                prix_min=prix_min,
+                fournisseur_min=fournisseur_min,
+                prix_max=prix_max,
+                prix_moy=prix_moy,
             )
         )
 
-    return [a for a in analyses if a.nb_proformas > 0]
+    return analyses
 
 
 def _prompt_pour_domaine(analyse: AnalyseDomaine) -> str:
     lignes_txt = "\n".join(
         f"  - DRP « {l.drp_titre} » | Fournisseur : {l.fournisseur_nom} "
-        f"| Proforma : {l.prix_proforma:,.0f} FCFA"
-        + (f" | Facture : {l.montant_facture:,.0f} FCFA (écart : {l.ecart_pct:+.1f}%)" if l.montant_facture else " | Facture : non disponible")
+        f"| Prix proforma : {l.prix:,.0f} FCFA | Délai : {l.delai_jours} jour(s)"
         for l in analyse.lignes
     )
     stats = (
         f"Nombre de proformas : {analyse.nb_proformas}\n"
-        f"Nombre de factures enregistrées : {analyse.nb_factures}\n"
+        f"Prix le plus bas    : {analyse.prix_min:,.0f} FCFA ({analyse.fournisseur_min})\n"
+        f"Prix le plus élevé  : {analyse.prix_max:,.0f} FCFA\n"
+        f"Prix moyen          : {analyse.prix_moy:,.0f} FCFA\n"
     )
-    if analyse.moy_proforma:
-        stats += f"Prix moyen proforma : {analyse.moy_proforma:,.0f} FCFA\n"
-    if analyse.moy_facture:
-        stats += f"Montant moyen facturé : {analyse.moy_facture:,.0f} FCFA\n"
-    if analyse.moy_ecart_pct is not None:
-        stats += f"Écart moyen proforma→facture : {analyse.moy_ecart_pct:+.1f}%\n"
-
     return (
-        f"Tu es un analyste achats senior. Voici les données de comparaison des prix "
-        f"pour le domaine « {analyse.domaine.nom} » :\n\n"
+        f"Tu es un analyste achats senior de Petrosen E&P.\n"
+        f"Voici tous les proformas reçus pour le domaine « {analyse.domaine_nom} » :\n\n"
         f"{stats}\n"
-        f"Détail ligne par ligne :\n{lignes_txt}\n\n"
-        "En 3 à 5 phrases concises en français, fournis une analyse critique de ces données : "
-        "tendances des écarts proforma/facture, fournisseurs à surveiller, risques de surcoût, "
-        "et recommandations concrètes pour les prochains achats dans ce domaine. "
-        "Ne répète pas les chiffres bruts, concentre-toi sur l'interprétation et les actions."
+        f"Détail des proformas :\n{lignes_txt}\n\n"
+        "En 3 à 4 phrases concises en français :\n"
+        "1. Indique quel fournisseur propose le prix le plus abordable et de combien il est inférieur à la moyenne.\n"
+        "2. Signale si certains fournisseurs sont significativement plus chers que la moyenne.\n"
+        "3. Prends en compte les délais pour nuancer la recommandation si nécessaire.\n"
+        "4. Donne une recommandation claire pour le choix du fournisseur dans ce domaine.\n"
+        "Sois direct et factuel. Ne répète pas les chiffres bruts déjà listés."
     )
 
 
-def generer_analyse_ia(domaines=None) -> list[AnalyseDomaine]:
+def generer_analyse_ia() -> list[AnalyseDomaine]:
     """
-    Construit les analyses statistiques et, si la clé ANTHROPIC_API_KEY est disponible,
-    enrichit chaque domaine avec un commentaire généré par Claude.
+    Construit les analyses par domaine à partir des proformas et, si
+    ANTHROPIC_API_KEY est disponible, enrichit chaque domaine avec un
+    commentaire IA identifiant le prix le plus abordable.
     """
-    analyses = _build_analyses(domaines)
+    analyses = _build_analyses()
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
 
     if not api_key:
@@ -157,8 +139,6 @@ def generer_analyse_ia(domaines=None) -> list[AnalyseDomaine]:
 
         client = anthropic.Anthropic(api_key=api_key)
         for analyse in analyses:
-            if analyse.nb_proformas == 0:
-                continue
             prompt = _prompt_pour_domaine(analyse)
             response = client.messages.create(
                 model="claude-haiku-4-5-20251001",
@@ -172,3 +152,66 @@ def generer_analyse_ia(domaines=None) -> list[AnalyseDomaine]:
                 a.commentaire_ia = f"Erreur lors de l'analyse IA : {exc}"
 
     return analyses
+
+
+def analyser_proforma_pdf(proforma) -> str:
+    """
+    Lit le PDF d'un proforma et demande à Claude d'extraire et analyser son contenu.
+    """
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return "Clé ANTHROPIC_API_KEY non configurée — renseignez-la dans votre fichier .env."
+
+    if not proforma.fichier:
+        return "Ce proforma ne contient pas de fichier PDF."
+
+    try:
+        with open(proforma.fichier.path, "rb") as f:
+            pdf_b64 = base64.standard_b64encode(f.read()).decode("utf-8")
+    except (OSError, IOError) as exc:
+        return f"Impossible de lire le fichier PDF : {exc}"
+
+    prompt = (
+        f"Tu es un analyste achats de Petrosen E&P. "
+        f"Voici le proforma PDF soumis par le fournisseur « {proforma.invitation.fournisseur.nom} » "
+        f"pour la DRP « {proforma.invitation.drp.titre} ».\n\n"
+        f"Données saisies manuellement par le fournisseur :\n"
+        f"- Prix déclaré : {proforma.prix:,.0f} FCFA\n"
+        f"- Délai déclaré : {proforma.delai_jours} jour(s)\n"
+        f"- Commentaire : {proforma.commentaire or 'Aucun'}\n\n"
+        "Analyse ce document PDF et fournis une réponse structurée en 5 points :\n"
+        "1. **Prestations proposées** : résumé de ce qui est offert\n"
+        "2. **Cohérence prix/délai** : les chiffres du PDF correspondent-ils aux données saisies ?\n"
+        "3. **Conditions particulières** : paiement, garantie, livraison, validité de l'offre\n"
+        "4. **Points de vigilance** : risques, clauses défavorables, informations manquantes\n"
+        "5. **Recommandation** : Favorable / À négocier / Défavorable — en une phrase\n\n"
+        "Réponds en français, de façon concise et professionnelle."
+    )
+
+    try:
+        import anthropic
+
+        client = anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1024,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "document",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "application/pdf",
+                                "data": pdf_b64,
+                            },
+                        },
+                        {"type": "text", "text": prompt},
+                    ],
+                }
+            ],
+        )
+        return response.content[0].text.strip()
+    except Exception as exc:
+        return f"Erreur lors de l'analyse IA : {exc}"

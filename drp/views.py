@@ -5,7 +5,7 @@ from django.contrib.auth import logout
 from django.contrib.auth.views import LoginView
 from django.db import transaction
 from django.db.models import Count
-from django.http import Http404, HttpResponseRedirect
+from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils.decorators import method_decorator
@@ -33,7 +33,8 @@ from drp.forms import (
 )
 from drp.mixins import ResponsableAchatRequiredMixin, user_is_responsable_achat
 from drp.models import Domaine, DRP, Facture, Fournisseur, Invitation, Proforma
-from drp.services.analyse import generer_analyse_ia
+from drp.services.analyse import analyser_proforma_pdf, generer_analyse_ia
+from drp.services.classement import classement_proformas
 
 
 def buyer_drp_queryset(user):
@@ -208,7 +209,17 @@ class DashboardView(LoginRequiredMixin, ResponsableAchatRequiredMixin, TemplateV
         ctx["drp_en_cours"] = base_qs.filter(statut=DRP.Statut.EN_COURS).count()
         ctx["drp_cloturees"] = base_qs.filter(statut=DRP.Statut.CLOTUREE).count()
         ctx["drp_annulees"] = base_qs.filter(statut=DRP.Statut.ANNULEE).count()
-        ctx["drps"] = base_qs.annotate(nb_offres=Count("invitations__proforma"))[:50]
+
+        statut = self.request.GET.get("statut", "")
+        valid_statuts = {choice.value for choice in DRP.Statut}
+        if statut in valid_statuts:
+            ctx["filtre_statut"] = statut
+            list_qs = base_qs.filter(statut=statut)
+        else:
+            ctx["filtre_statut"] = ""
+            list_qs = base_qs
+
+        ctx["drps"] = list_qs.annotate(nb_offres=Count("invitations__proforma"))[:50]
         return ctx
 
 
@@ -311,12 +322,11 @@ class DRPDetailView(LoginRequiredMixin, ResponsableAchatRequiredMixin, DetailVie
             .order_by("fournisseur__nom")
         )
         ctx["invitations"] = invitations
-        proformas = list(
+        proformas_qs = list(
             Proforma.objects.filter(invitation__drp=drp)
             .select_related("invitation", "invitation__fournisseur")
-            .order_by("prix", "delai_jours", "pk")
         )
-        ctx["proformas"] = proformas
+        ctx["proformas_classement"] = classement_proformas(drp, proformas_qs)
         ctx["select_form"] = SelectWinnerForm(drp=drp)
         ctx["statut_form"] = DRPChangeStatutForm(drp=drp)
         ctx["limite_depassee"] = drp.est_limite_reponses_depassee()
@@ -503,3 +513,17 @@ class SupplierProformaView(DetailView):
             messages.success(request, "Votre proforma a été enregistrée. Merci.")
             return redirect("drp:supplier_proforma", token=self.object.token)
         return self.render_to_response(self.get_context_data(form=form))
+
+
+class AnalyserProformaPDFView(LoginRequiredMixin, ResponsableAchatRequiredMixin, View):
+    """Analyse le PDF d'un proforma via Claude et retourne le résultat en JSON."""
+
+    def get(self, request, pk):
+        proforma = get_object_or_404(
+            Proforma.objects.select_related(
+                "invitation__fournisseur", "invitation__drp"
+            ),
+            pk=pk,
+        )
+        analyse = analyser_proforma_pdf(proforma)
+        return JsonResponse({"analyse": analyse})
