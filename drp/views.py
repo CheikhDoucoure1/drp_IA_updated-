@@ -33,7 +33,7 @@ from drp.forms import (
 )
 from drp.mixins import ResponsableAchatRequiredMixin, user_is_responsable_achat
 from drp.models import Domaine, DRP, Facture, Fournisseur, Invitation, Proforma
-from drp.services.analyse import analyser_proforma_pdf, generer_analyse_ia
+from drp.services.analyse import analyser_fournisseur_complet, analyser_proforma_pdf, generer_analyse_ia
 from drp.services.classement import classement_proformas
 
 
@@ -219,7 +219,7 @@ class DashboardView(LoginRequiredMixin, ResponsableAchatRequiredMixin, TemplateV
             ctx["filtre_statut"] = ""
             list_qs = base_qs
 
-        ctx["drps"] = list_qs.annotate(nb_offres=Count("invitations__proforma"))[:50]
+        ctx["drps"] = list_qs.annotate(nb_offres=Count("invitations__proforma")).order_by("-created_at")[:50]
         return ctx
 
 
@@ -449,13 +449,14 @@ class FactureCreateView(LoginRequiredMixin, ResponsableAchatRequiredMixin, View)
 
 
 class AnalyseComparativeView(LoginRequiredMixin, ResponsableAchatRequiredMixin, TemplateView):
-    """Page d'analyse IA comparative des prix proforma vs factures par domaine."""
+    """Page d'analyse IA des prix proforma par DRP."""
 
     template_name = "drp/analyse_comparative.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["analyses"] = generer_analyse_ia()
+        drp_qs = buyer_drp_queryset(self.request.user)
+        ctx["analyses"] = generer_analyse_ia(drp_qs)
         return ctx
 
 
@@ -526,4 +527,21 @@ class AnalyserProformaPDFView(LoginRequiredMixin, ResponsableAchatRequiredMixin,
             pk=pk,
         )
         analyse = analyser_proforma_pdf(proforma)
+        return JsonResponse({"analyse": analyse})
+
+
+class AnalyserFournisseurIAView(LoginRequiredMixin, ResponsableAchatRequiredMixin, View):
+    """Analyse complète IA d'un fournisseur (proforma + facture + contexte) — retourne JSON."""
+
+    def get(self, request, pk):
+        proforma = get_object_or_404(
+            Proforma.objects.select_related(
+                "invitation__fournisseur", "invitation__drp__created_by"
+            ),
+            pk=pk,
+        )
+        if not request.user.is_superuser and proforma.invitation.drp.created_by != request.user:
+            from django.http import HttpResponseForbidden
+            return HttpResponseForbidden()
+        analyse = analyser_fournisseur_complet(proforma)
         return JsonResponse({"analyse": analyse})

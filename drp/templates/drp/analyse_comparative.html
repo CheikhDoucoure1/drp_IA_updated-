@@ -1,9 +1,9 @@
 {% extends "drp/base.html" %}
-{% block title %}Analyse IA — Prix par domaine{% endblock %}
-{% block saas_page_title %}Analyse IA — Prix par domaine{% endblock %}
+{% block title %}Analyse IA — Offres par DRP{% endblock %}
+{% block saas_page_title %}Analyse IA — Offres par DRP{% endblock %}
 {% block saas_page_sub %}
 <p class="drp-topbar-sub d-none d-sm-block mb-0">
-  Identification du prix le plus abordable par domaine, basée sur les proformas fournisseurs.
+  Analyse comparative des proformas fournisseurs pour chaque demande de prix.
 </p>
 {% endblock %}
 {% block saas_topbar_actions %}
@@ -23,9 +23,18 @@
 {% for analyse in analyses %}
 <div class="card drp-card mb-4">
   <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-    <div>
-      <i class="bi bi-tags me-2 text-primary opacity-75"></i>
-      <span class="fw-semibold">{{ analyse.domaine_nom }}</span>
+    <div class="d-flex align-items-center gap-2">
+      <i class="bi bi-file-earmark-text me-1 text-primary opacity-75"></i>
+      <span class="fw-semibold">{{ analyse.drp_titre }}</span>
+      {% if analyse.statut == "en_cours" %}
+      <span class="badge bg-success-subtle text-success border border-success">En cours</span>
+      {% elif analyse.statut == "cloturee" %}
+      <span class="badge bg-secondary-subtle text-secondary border">Clôturée</span>
+      {% elif analyse.statut == "annulee" %}
+      <span class="badge bg-danger-subtle text-danger border border-danger">Annulée</span>
+      {% else %}
+      <span class="badge bg-light text-dark border">{{ analyse.statut }}</span>
+      {% endif %}
     </div>
     <div class="d-flex gap-2 flex-wrap">
       <span class="badge bg-secondary-subtle text-secondary border">
@@ -72,17 +81,16 @@
       <table class="table table-hover align-middle mb-0">
         <thead>
           <tr>
-            <th>DRP</th>
             <th>Fournisseur</th>
             <th class="text-end">Prix proforma</th>
             <th class="text-end">Délai</th>
             <th class="text-center">Classement</th>
+            <th class="text-center">Analyse IA</th>
           </tr>
         </thead>
         <tbody>
           {% for ligne in analyse.lignes %}
           <tr {% if ligne.est_min %}class="table-success"{% endif %}>
-            <td class="text-truncate" style="max-width:180px;" title="{{ ligne.drp_titre }}">{{ ligne.drp_titre }}</td>
             <td class="fw-medium">
               {{ ligne.fournisseur_nom }}
               {% if ligne.est_min %}
@@ -100,17 +108,24 @@
               <span class="text-secondary small">—</span>
               {% endif %}
             </td>
+            <td class="text-center">
+              <button class="btn btn-sm btn-outline-primary btn-analyser-fournisseur"
+                      data-url="{% url 'drp:proforma_analyser_fournisseur' ligne.proforma_id %}"
+                      data-fournisseur="{{ ligne.fournisseur_nom }}">
+                <i class="bi bi-stars me-1"></i>Analyser
+              </button>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
 
-    <!-- Recommandation IA -->
+    <!-- Recommandation IA globale -->
     {% if analyse.commentaire_ia %}
     <div class="px-3 px-md-4 py-3 border-top bg-light rounded-bottom">
       <p class="small fw-semibold text-primary mb-2">
-        <i class="bi bi-stars me-1"></i>Recommandation IA
+        <i class="bi bi-stars me-1"></i>Synthèse IA
       </p>
       <p class="small text-secondary mb-0" style="line-height:1.7;">{{ analyse.commentaire_ia }}</p>
     </div>
@@ -120,4 +135,36 @@
 </div>
 {% endfor %}
 
+<!-- Modal analyse fournisseur -->
+<div class="modal fade" id="modalAnalyseFournisseur" tabindex="-1" aria-labelledby="modalAnalyseFournisseurLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalAnalyseFournisseurLabel">
+          <i class="bi bi-stars me-2 text-primary"></i>Analyse IA — <span id="modalFournisseurNom"></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <div id="modalSpinnerFournisseur" class="text-center py-4">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Analyse en cours…</span>
+          </div>
+          <p class="text-secondary small mt-3 mb-0">Analyse en cours, veuillez patienter…</p>
+        </div>
+        <div id="modalAnalyseFournisseurTexte" class="d-none small lh-lg"></div>
+        <div id="modalAnalyseFournisseurErreur" class="alert alert-danger d-none mt-2"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+{% load static %}
+<script src="{% static 'drp/analyse-fournisseur.js' %}"></script>
 {% endblock %}
