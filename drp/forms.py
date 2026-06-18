@@ -83,14 +83,12 @@ class DRPForm(forms.ModelForm):
             "description",
             "fichier",
             "domaines",
-            "budget_previsionnel",
             "date_cloture",
         )
         widgets = {
             "titre": forms.TextInput(attrs={"class": "form-control"}),
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
             "fichier": forms.FileInput(attrs={"class": "form-control"}),
-            "budget_previsionnel": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0.01"}),
             "date_cloture": forms.DateTimeInput(
                 attrs={"type": "datetime-local", "class": "form-control"},
                 format="%Y-%m-%dT%H:%M",

@@ -19,6 +19,34 @@
           <span class="d-block mt-2 text-muted"><i class="bi bi-shield-lock me-1"></i>Ne partagez pas ce lien.</span>
         </div>
 
+        <div class="rounded-3 p-3 mb-4 small" style="background:#f0f6ff;border:1px solid rgba(37,99,235,0.15);">
+          <p class="fw-semibold mb-2 text-primary"><i class="bi bi-file-text me-1"></i>Spécifications de la demande</p>
+          {% if invitation.drp.description %}
+          <p class="mb-2 text-secondary" style="white-space:pre-line;">{{ invitation.drp.description }}</p>
+          {% endif %}
+          {% if invitation.drp.domaines.all %}
+          <div class="mb-2">
+            <span class="text-muted me-1"><i class="bi bi-tags me-1"></i>Domaines :</span>
+            {% for d in invitation.drp.domaines.all %}
+              <span class="badge bg-primary bg-opacity-10 text-primary me-1">{{ d }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% if invitation.drp.budget_previsionnel %}
+          <div class="mb-2">
+            <i class="bi bi-wallet2 me-1 text-muted"></i><span class="text-muted">Budget prévisionnel :</span>
+            <strong class="ms-1">{{ invitation.drp.budget_previsionnel|floatformat:0 }} FCFA</strong>
+          </div>
+          {% endif %}
+          {% if invitation.drp.fichier %}
+          <div class="mt-2">
+            <a href="{{ invitation.drp.fichier.url }}" class="btn btn-sm btn-outline-primary rounded-pill" target="_blank" rel="noopener">
+              <i class="bi bi-file-earmark-pdf me-1"></i>Cahier des charges (PDF)
+            </a>
+          </div>
+          {% endif %}
+        </div>
+
         {% if existing_proforma %}
         <div class="alert alert-success border-0 shadow-sm">
           <p class="fw-semibold mb-2"><i class="bi bi-check-circle me-1"></i>Proforma déjà transmise</p>

@@ -238,6 +238,18 @@ class DRPCreateView(LoginRequiredMixin, ResponsableAchatRequiredMixin, CreateVie
         return ctx
 
     def form_valid(self, form):
+        domaines = form.cleaned_data.get("domaines", [])
+        domaines_ids = [d.pk for d in domaines]
+        nb_fournisseurs = Fournisseur.objects.filter(actif=True, domaines__in=domaines_ids).distinct().count()
+        if nb_fournisseurs < 3:
+            form.add_error(
+                "domaines",
+                f"Seulement {nb_fournisseurs} fournisseur(s) actif(s) correspond(ent) aux domaines sélectionnés. "
+                "Il en faut au moins 3 pour créer une DRP. "
+                "Ajoutez des fournisseurs dans ces domaines ou sélectionnez des domaines supplémentaires.",
+            )
+            return self.form_invalid(form)
+
         with transaction.atomic():
             self.object = form.save(commit=False)
             self.object.created_by = self.request.user
