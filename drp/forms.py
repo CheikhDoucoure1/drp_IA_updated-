@@ -133,6 +133,33 @@ class DRPForm(forms.ModelForm):
         return fichier
 
 
+class DRPCreateForm(DRPForm):
+    """Formulaire de création : remplace la sélection de domaines par une sélection explicite de fournisseurs."""
+
+    fournisseurs = forms.ModelMultipleChoiceField(
+        queryset=Fournisseur.objects.filter(actif=True).order_by("nom"),
+        required=True,
+        widget=forms.MultipleHiddenInput,
+    )
+
+    class Meta(DRPForm.Meta):
+        fields = ("titre", "description", "fichier", "date_cloture")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # DRPForm déclare `domaines` required=True ; ce champ n'existe pas dans ce formulaire.
+        self.fields.pop("domaines", None)
+
+    def clean_fournisseurs(self):
+        qs = self.cleaned_data.get("fournisseurs")
+        count = qs.count() if qs is not None else 0
+        if count < 3:
+            raise forms.ValidationError(
+                f"Sélectionnez au moins 3 fournisseurs ({count} sélectionné(s))."
+            )
+        return qs
+
+
 class ProformaResponseForm(forms.ModelForm):
     class Meta:
         model = Proforma

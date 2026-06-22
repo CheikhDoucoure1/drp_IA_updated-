@@ -20,10 +20,11 @@ from django.views.generic import (
 )
 from django_ratelimit.decorators import ratelimit
 
-from drp.emailing import send_invitation_email
+from drp.emailing import send_invitation_email, send_non_selection_email, send_relance_email, send_selection_email
 from drp.forms import (
     BuyerLoginForm,
     DRPChangeStatutForm,
+    DRPCreateForm,
     DomaineForm,
     DRPForm,
     FactureForm,
@@ -226,7 +227,7 @@ class DashboardView(LoginRequiredMixin, ResponsableAchatRequiredMixin, TemplateV
 @method_decorator(ratelimit(key="user", rate="30/h", method="POST"), name="post")
 class DRPCreateView(LoginRequiredMixin, ResponsableAchatRequiredMixin, CreateView):
     model = DRP
-    form_class = DRPForm
+    form_class = DRPCreateForm
     template_name = "drp/drp_form.html"
 
     def get_context_data(self, **kwargs):
@@ -235,29 +236,30 @@ class DRPCreateView(LoginRequiredMixin, ResponsableAchatRequiredMixin, CreateVie
         ctx.setdefault("page_title", "Nouvelle DRP")
         ctx.setdefault("submit_label", "Enregistrer et inviter")
         ctx["cancel_href"] = reverse("drp:dashboard")
+        ctx["is_create"] = True
+        from django.db.models import Prefetch
+        ctx["domaines_fournisseurs"] = (
+            Domaine.objects.prefetch_related(
+                Prefetch("fournisseurs", queryset=Fournisseur.objects.filter(actif=True).order_by("nom"))
+            ).filter(fournisseurs__actif=True).distinct().order_by("nom")
+        )
         return ctx
 
     def form_valid(self, form):
-        domaines = form.cleaned_data.get("domaines", [])
-        domaines_ids = [d.pk for d in domaines]
-        nb_fournisseurs = Fournisseur.objects.filter(actif=True, domaines__in=domaines_ids).distinct().count()
-        if nb_fournisseurs < 3:
-            form.add_error(
-                "domaines",
-                f"Seulement {nb_fournisseurs} fournisseur(s) actif(s) correspond(ent) aux domaines sélectionnés. "
-                "Il en faut au moins 3 pour créer une DRP. "
-                "Ajoutez des fournisseurs dans ces domaines ou sélectionnez des domaines supplémentaires.",
-            )
-            return self.form_invalid(form)
+        fournisseurs = form.cleaned_data.get("fournisseurs")
 
         with transaction.atomic():
             self.object = form.save(commit=False)
             self.object.created_by = self.request.user
             self.object.save()
-            form.save_m2m()
 
-            domaines_ids = list(self.object.domaines.values_list("pk", flat=True))
-            fournisseurs = Fournisseur.objects.filter(actif=True, domaines__in=domaines_ids).distinct()
+            # Dériver les domaines depuis les fournisseurs sélectionnés
+            domaine_ids = set()
+            for f in fournisseurs:
+                for d in f.domaines.all():
+                    domaine_ids.add(d.pk)
+            self.object.domaines.set(domaine_ids)
+
             expiration = self.object.date_cloture
             envoyes = 0
             for f in fournisseurs:
@@ -278,17 +280,18 @@ class DRPCreateView(LoginRequiredMixin, ResponsableAchatRequiredMixin, CreateVie
                             self.request,
                             f"L’invitation pour {f.nom} a été créée mais l’email n’a pas pu être envoyé ({exc}).",
                         )
-            if not fournisseurs.exists():
-                messages.warning(
-                    self.request,
-                    "Aucun fournisseur actif ne correspond aux domaines sélectionnés. Aucune invitation créée.",
-                )
-            elif envoyes:
+            if envoyes:
                 messages.success(
                     self.request,
                     f"DRP créée. {envoyes} invitation(s) envoyée(s) par email.",
                 )
         return redirect("drp:dashboard")
+
+    def form_invalid(self, form):
+        import logging
+        logging.getLogger(__name__).error("DRPCreateView form_invalid: %s", form.errors.as_json())
+        messages.error(self.request, f"Erreur de validation : {form.errors.as_text()}")
+        return super().form_invalid(form)
 
 
 @method_decorator(ratelimit(key="user", rate="30/h", method="POST"), name="post")
@@ -342,6 +345,7 @@ class DRPDetailView(LoginRequiredMixin, ResponsableAchatRequiredMixin, DetailVie
         ctx["select_form"] = SelectWinnerForm(drp=drp)
         ctx["statut_form"] = DRPChangeStatutForm(drp=drp)
         ctx["limite_depassee"] = drp.est_limite_reponses_depassee()
+        ctx["nb_en_attente"] = invitations.filter(statut=Invitation.Statut.ENVOYEE).count()
         return ctx
 
     def post(self, request, *args, **kwargs):
@@ -388,8 +392,47 @@ class DRPDetailView(LoginRequiredMixin, ResponsableAchatRequiredMixin, DetailVie
                     request,
                     f"Fournisseur retenu : {inv.fournisseur.nom}. La DRP est clôturée.",
                 )
+                # Notifier le fournisseur retenu
+                try:
+                    send_selection_email(inv, request)
+                except Exception as exc:
+                    messages.warning(request, f"Notification non envoyée à {inv.fournisseur.nom} ({exc}).")
+                # Notifier les autres fournisseurs ayant soumis une proforma
+                autres = (
+                    self.object.invitations
+                    .filter(statut=Invitation.Statut.REPONDUE)
+                    .exclude(pk=inv.pk)
+                    .select_related("fournisseur")
+                )
+                for autre_inv in autres:
+                    try:
+                        send_non_selection_email(autre_inv, request)
+                    except Exception as exc:
+                        messages.warning(request, f"Notification non envoyée à {autre_inv.fournisseur.nom} ({exc}).")
             else:
                 messages.error(request, "Choix invalide. Veuillez sélectionner une offre existante.")
+            return redirect("drp:drp_detail", pk=self.object.pk)
+
+        if action == "relancer":
+            if self.object.statut != DRP.Statut.EN_COURS or self.object.est_limite_reponses_depassee():
+                messages.error(request, "Impossible de relancer : la DRP n'est plus ouverte ou la date de clôture est dépassée.")
+                return redirect("drp:drp_detail", pk=self.object.pk)
+            en_attente = self.object.invitations.filter(statut=Invitation.Statut.ENVOYEE).select_related("fournisseur", "drp")
+            if not en_attente.exists():
+                messages.info(request, "Tous les fournisseurs ont déjà répondu ou sont expirés.")
+                return redirect("drp:drp_detail", pk=self.object.pk)
+            envoyes, echecs = 0, 0
+            for inv in en_attente:
+                try:
+                    send_relance_email(inv, request)
+                    envoyes += 1
+                except Exception as exc:
+                    echecs += 1
+                    messages.warning(request, f"Relance non envoyée à {inv.fournisseur.nom} ({exc}).")
+            if envoyes:
+                messages.success(request, f"{envoyes} relance(s) envoyée(s) avec succès.")
+            if echecs and not envoyes:
+                messages.error(request, "Aucune relance n'a pu être envoyée.")
             return redirect("drp:drp_detail", pk=self.object.pk)
 
         messages.error(request, "Action non reconnue.")

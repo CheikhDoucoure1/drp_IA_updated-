@@ -180,7 +180,18 @@
 </div>
 
 <div class="card drp-card">
-  <div class="card-header"><i class="bi bi-envelope me-2 text-primary opacity-75"></i>Invitations</div>
+  <div class="card-header d-flex align-items-center justify-content-between gap-2 flex-wrap">
+    <span><i class="bi bi-envelope me-2 text-primary opacity-75"></i>Invitations</span>
+    {% if drp.statut == "en_cours" and not limite_depassee and nb_en_attente > 0 %}
+    <form method="post" class="d-inline m-0">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="relancer">
+      <button type="submit" class="btn btn-sm btn-outline-warning">
+        <i class="bi bi-bell me-1"></i>Relancer ({{ nb_en_attente }} en attente)
+      </button>
+    </form>
+    {% endif %}
+  </div>
   <div class="drp-table-wrap table-responsive">
     <table class="table mb-0">
       <thead>
@@ -194,7 +205,15 @@
         {% for inv in invitations %}
         <tr>
           <td>{{ inv.fournisseur.nom }}</td>
-          <td>{{ inv.get_statut_display }}</td>
+          <td>
+            {% if inv.statut == "envoyee" %}
+              <span class="badge bg-warning text-dark">{{ inv.get_statut_display }}</span>
+            {% elif inv.statut == "repondue" %}
+              <span class="badge bg-success">{{ inv.get_statut_display }}</span>
+            {% else %}
+              <span class="badge bg-secondary">{{ inv.get_statut_display }}</span>
+            {% endif %}
+          </td>
           <td class="text-secondary small">{{ inv.expiration|date:"d/m/Y H:i" }}</td>
         </tr>
         {% endfor %}

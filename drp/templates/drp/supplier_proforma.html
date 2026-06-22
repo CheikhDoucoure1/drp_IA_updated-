@@ -47,19 +47,12 @@
           {% endif %}
         </div>
 
-        {% if existing_proforma %}
-        <div class="alert alert-success border-0 shadow-sm">
-          <p class="fw-semibold mb-2"><i class="bi bi-check-circle me-1"></i>Proforma déjà transmise</p>
-          <p class="small mb-2 text-secondary">Le {{ existing_proforma.submitted_at|date:"d/m/Y H:i" }}</p>
-          <ul class="mb-0 small list-unstyled">
-            <li><i class="bi bi-cash-coin me-1"></i>{{ existing_proforma.prix }} FCFA</li>
-            <li><i class="bi bi-calendar-week me-1"></i>{{ existing_proforma.delai_jours }} jours</li>
-            <li class="mt-2"><a href="{{ existing_proforma.fichier.url }}" class="btn btn-sm btn-outline-primary rounded-pill" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>Votre PDF</a></li>
-          </ul>
-        </div>
-        {% elif readonly %}
-        <div class="alert alert-warning border-0 shadow-sm">
-          {% if invitation.drp.statut != "en_cours" %}
+        {% if readonly %}
+        <div class="alert border-0 shadow-sm {% if invitation.statut == "repondue" %}alert-success{% else %}alert-warning{% endif %}">
+          {% if invitation.statut == "repondue" %}
+            <p class="fw-semibold mb-1"><i class="bi bi-lock-fill me-2"></i>Lien expiré</p>
+            <p class="small mb-0 text-secondary">Votre proforma a bien été transmise et ce lien n’est plus utilisable.</p>
+          {% elif invitation.drp.statut != "en_cours" %}
             <i class="bi bi-slash-circle me-2"></i>Cette demande n’est plus ouverte (statut : {{ invitation.drp.get_statut_display }}). Les réponses ne sont plus acceptées.
           {% else %}
             <i class="bi bi-hourglass-bottom me-2"></i>Ce lien a expiré ou n’est plus utilisable.

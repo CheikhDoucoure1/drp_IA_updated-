@@ -1,4 +1,5 @@
 {% extends "drp/base.html" %}
+{% load static %}
 {% block title %}{{ page_title|default:"DRP" }}{% endblock %}
 {% block saas_page_title %}{{ form_title|default:"DRP" }}{% endblock %}
 {% block saas_page_sub %}<p class="drp-topbar-sub d-none d-sm-block mb-0">Les champs sont enregistrés à la validation du formulaire.</p>{% endblock %}
@@ -31,6 +32,70 @@
         <div class="form-text">Après cette date, les fournisseurs ne pourront plus envoyer de proforma.</div>
         {{ form.date_cloture.errors }}
       </div>
+
+      {% if is_create %}
+      {# --- Sélection fournisseurs par domaine (création uniquement) --- #}
+      <div class="mb-4">
+        <label class="form-label fw-semibold">Domaine &amp; Fournisseurs <span class="text-danger">*</span></label>
+
+        {# Étape 1 : choix du domaine #}
+        <div class="mb-3">
+          <label class="form-label small text-secondary" for="domaine-select">1. Choisir un domaine</label>
+          <select id="domaine-select" class="form-select">
+            <option value="">— Sélectionner un domaine —</option>
+            {% for domaine in domaines_fournisseurs %}
+            <option value="{{ domaine.pk }}">{{ domaine.nom }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        {# Étape 2 : une section par domaine, cachée par défaut (style inline) #}
+        {% for domaine in domaines_fournisseurs %}
+        {% with fourns=domaine.fournisseurs.all %}
+        <div id="dom-section-{{ domaine.pk }}" style="display:none;">
+          {% if fourns|length >= 3 %}
+          <label class="form-label small text-secondary mt-1">2. Sélectionner les fournisseurs <span class="text-danger">(minimum 3)</span></label>
+          <div id="sel-counter-{{ domaine.pk }}" class="rounded-3 p-2 mb-3 small" style="background:#f0f6ff;border:1px solid rgba(37,99,235,0.15);">
+            <i class="bi bi-people me-1 text-primary"></i><span id="sel-text-{{ domaine.pk }}">0 sélectionné — minimum 3 requis</span>
+          </div>
+          <div class="row g-2 mb-3">
+            {% for f in fourns %}
+            <div class="col-12 col-md-6">
+              <label class="drp-f-label d-flex align-items-start gap-2 w-100 p-2 rounded-2" style="border:1px solid #e2e8f0;background:#f8fafc;cursor:pointer;">
+                <input class="form-check-input mt-1 flex-shrink-0 drp-f-check"
+                       type="checkbox"
+                       value="{{ f.pk }}"
+                       data-nom="{{ f.nom }}"
+                       data-dom="{{ domaine.pk }}">
+                <span>
+                  <span class="fw-medium d-block">{{ f.nom }}</span>
+                  <span class="small text-muted">{{ f.email }}</span>
+                </span>
+              </label>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="alert alert-warning small mb-3">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            Le domaine « {{ domaine.nom }} » ne compte que {{ fourns|length }} fournisseur(s) actif(s). Il en faut au moins 3 pour créer une DRP.
+          </div>
+          {% endif %}
+        </div>
+        {% endwith %}
+        {% endfor %}
+
+        {# Inputs cachés soumis avec le formulaire #}
+        <div style="display:none;">{{ form.fournisseurs }}</div>
+        <div id="hidden-fourns"></div>
+        {% if form.fournisseurs.errors %}
+        <div class="invalid-feedback d-block mt-2">{{ form.fournisseurs.errors }}</div>
+        {% endif %}
+        <div id="fourns-error" class="text-danger small d-none mt-2"></div>
+      </div>
+
+      {% else %}
+      {# --- Mode édition : sélection de domaines classique --- #}
       <div class="mb-3">
         <label class="form-label">Domaines</label>
         <div class="drp-check-area">
@@ -38,11 +103,20 @@
         </div>
         {{ form.domaines.errors }}
       </div>
-<div class="d-flex flex-wrap gap-2 pt-2 border-top mt-2">
-        <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>{{ submit_label|default:"Enregistrer" }}</button>
+      {% endif %}
+
+      <div class="d-flex flex-wrap gap-2 pt-2 border-top mt-2">
+        <button type="submit" class="btn btn-primary" id="btn-submit"{% if is_create %} disabled{% endif %}><i class="bi bi-check2 me-1"></i>{{ submit_label|default:"Enregistrer" }}</button>
         <a href="{{ cancel_href }}" class="btn btn-outline-secondary">Annuler</a>
       </div>
     </form>
   </div>
 </div>
+
+{% endblock %}
+
+{% block extra_js %}
+{% if is_create %}
+<script src="{% static 'drp/drp-create.js' %}"></script>
+{% endif %}
 {% endblock %}
