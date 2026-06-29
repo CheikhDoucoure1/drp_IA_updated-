@@ -5,7 +5,7 @@ Configuration Django — DRP (variables d'environnement pour les secrets).
 import os
 from pathlib import Path
 
-from csp.constants import SELF
+from csp.constants import SELF, UNSAFE_INLINE
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -110,7 +110,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 LOGIN_URL = "/login/"
-LOGIN_REDIRECT_URL = "/"
+LOGIN_REDIRECT_URL = "/dashboard/"
 LOGOUT_REDIRECT_URL = "/login/"
 
 # --- Fichiers ---
@@ -151,7 +151,7 @@ CONTENT_SECURITY_POLICY = {
     "DIRECTIVES": {
         "default-src": [SELF],
         "script-src": [SELF, "https://cdn.jsdelivr.net"],
-        "style-src": [SELF, "https://cdn.jsdelivr.net"],
+        "style-src": [SELF, UNSAFE_INLINE, "https://cdn.jsdelivr.net"],
         "img-src": [SELF, "data:"],
         "font-src": [SELF, "https://cdn.jsdelivr.net"],
         "connect-src": [SELF],

@@ -1,0 +1,106 @@
+{% extends "drp/base.html" %}
+{% block title %}Expressions de besoin{% endblock %}
+{% block saas_page_title %}Expressions de besoin{% endblock %}
+{% block saas_page_sub %}<p class="drp-topbar-sub d-none d-sm-block mb-0">Gérez vos demandes avant de créer une DRP.</p>{% endblock %}
+{% block saas_topbar_actions %}
+<a href="{% url 'drp:besoin_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nouveau besoin</a>
+{% endblock %}
+{% block content %}
+
+<div class="drp-stat-grid mb-4">
+  <a href="{% url 'drp:besoin_list' %}" class="drp-stat-card{% if not filtre_statut %} is-active{% endif %}">
+    <div class="drp-stat-icon drp-stat-icon--primary"><i class="bi bi-clipboard-data"></i></div>
+    <div>
+      <p class="drp-stat-label">Total</p>
+      <p class="drp-stat-value">{{ total }}</p>
+    </div>
+  </a>
+  <a href="{% url 'drp:besoin_list' %}?statut=en_attente" class="drp-stat-card{% if filtre_statut == 'en_attente' %} is-active{% endif %}">
+    <div class="drp-stat-icon drp-stat-icon--sky"><i class="bi bi-hourglass-split"></i></div>
+    <div>
+      <p class="drp-stat-label">En attente</p>
+      <p class="drp-stat-value">{{ nb_en_attente }}</p>
+    </div>
+  </a>
+  <a href="{% url 'drp:besoin_list' %}?statut=approuvee" class="drp-stat-card{% if filtre_statut == 'approuvee' %} is-active{% endif %}">
+    <div class="drp-stat-icon drp-stat-icon--slate"><i class="bi bi-check2-circle"></i></div>
+    <div>
+      <p class="drp-stat-label">Approuvées</p>
+      <p class="drp-stat-value">{{ nb_approuvees }}</p>
+    </div>
+  </a>
+  <a href="{% url 'drp:besoin_list' %}?statut=convertie" class="drp-stat-card{% if filtre_statut == 'convertie' %} is-active{% endif %}">
+    <div class="drp-stat-icon drp-stat-icon--rose"><i class="bi bi-arrow-repeat"></i></div>
+    <div>
+      <p class="drp-stat-label">Converties</p>
+      <p class="drp-stat-value">{{ nb_converties }}</p>
+    </div>
+  </a>
+</div>
+
+<div class="card drp-card">
+  <div class="card-header border-0 pb-0 pt-3 px-3 px-md-4">
+    <div class="drp-card-header-lead">Liste des expressions de besoin</div>
+    <div class="drp-card-header-muted">Produit, département demandeur, statut et date de soumission.</div>
+  </div>
+  <div class="drp-table-wrap table-responsive">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th>Référence</th>
+          <th>Produit / Service</th>
+          <th>Domaine</th>
+          <th>Qté</th>
+          <th>Statut</th>
+          <th>Date</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for eb in expressions %}
+        <tr class="drp-row-link" data-href="{% url 'drp:besoin_detail' eb.pk %}" role="link" tabindex="0" aria-label="Voir {{ eb.reference }}">
+          <td class="fw-semibold text-secondary small">{{ eb.reference }}</td>
+          <td class="fw-medium text-dark">{{ eb.produit }}</td>
+          <td class="small text-muted">{{ eb.domaine.nom }}</td>
+          <td class="small">{{ eb.quantite }}{% if eb.unite %} {{ eb.unite }}{% endif %}</td>
+          <td>
+            {% if eb.statut == "en_attente" %}
+              <span class="badge badge-drp badge-drp-en-cours">En attente</span>
+            {% elif eb.statut == "approuvee" %}
+              <span class="badge badge-drp badge-drp-actif">Approuvée</span>
+            {% elif eb.statut == "rejetee" %}
+              <span class="badge badge-drp badge-drp-annulee">Rejetée</span>
+            {% elif eb.statut == "convertie" %}
+              <span class="badge badge-drp badge-drp-cloturee">Convertie</span>
+            {% endif %}
+          </td>
+          <td class="text-secondary small">{{ eb.created_at|date:"d/m/Y" }}</td>
+          <td class="text-end text-nowrap">
+            {% if eb.statut == "en_attente" %}
+            <a href="{% url 'drp:besoin_update' eb.pk %}" class="btn btn-sm btn-outline-secondary me-1" onclick="event.stopPropagation()">Modifier</a>
+            {% endif %}
+            <a href="{% url 'drp:besoin_detail' eb.pk %}" class="btn btn-sm btn-primary" onclick="event.stopPropagation()">Détail</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center py-5 text-secondary">
+            <i class="bi bi-clipboard d-block fs-2 mb-2 opacity-25"></i>
+            {% if filtre_statut %}
+              Aucune expression pour ce filtre.
+              <a href="{% url 'drp:besoin_list' %}" class="d-block mt-2">Voir toutes les expressions</a>
+            {% else %}
+              Aucune expression de besoin. <a href="{% url 'drp:besoin_create' %}">Créer la première</a>.
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+{% load static %}
+<script src="{% static 'drp/dashboard.js' %}"></script>
+{% endblock %}

@@ -71,6 +71,28 @@ def send_relance_email(invitation, request=None) -> None:
     )
 
 
+def send_reactivation_email(invitation, request=None) -> None:
+    """Notifie le fournisseur que son lien a été réactivé par l'admin."""
+    link = build_supplier_link(invitation, request)
+    subject = f"[Réactivation] Demande de prix — {invitation.drp.titre}"
+    body = (
+        f"Bonjour,\n\n"
+        f"Suite à une décision de notre équipe, votre lien de soumission de proforma pour la "
+        f"demande de prix « {invitation.drp.titre} » a été réactivé.\n\n"
+        f"Vous pouvez soumettre une nouvelle offre jusqu'au "
+        f"{invitation.date_reactivation:%d/%m/%Y à %H:%M} via le lien ci-dessous :\n{link}\n\n"
+        f"Merci de ne pas transférer ce lien.\n\n"
+        f"Cordialement"
+    )
+    send_mail(
+        subject=subject,
+        message=body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[invitation.fournisseur.email],
+        fail_silently=False,
+    )
+
+
 def send_invitation_email(invitation, request=None) -> None:
     """Envoie l’email d’invitation (texte brut, pas de HTML non fiable)."""
     link = build_supplier_link(invitation, request)

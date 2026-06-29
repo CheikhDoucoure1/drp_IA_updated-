@@ -1,0 +1,17 @@
+{% extends "drp/base.html" %}
+{% block title %}Supprimer {{ eb.reference }}{% endblock %}
+{% block saas_page_title %}Supprimer l'expression de besoin{% endblock %}
+{% block content %}
+<div class="card drp-card" style="max-width: 540px;">
+  <div class="card-body">
+    <p class="mb-1">Vous êtes sur le point de supprimer :</p>
+    <p class="fw-semibold mb-3">{{ eb.reference }} — {{ eb.produit }}</p>
+    <p class="text-danger small mb-4">Cette action est irréversible.</p>
+    <form method="post" class="d-flex gap-2 flex-wrap">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1"></i>Confirmer la suppression</button>
+      <a href="{% url 'drp:besoin_detail' eb.pk %}" class="btn btn-outline-secondary">Annuler</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

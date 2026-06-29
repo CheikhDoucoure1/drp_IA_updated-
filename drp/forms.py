@@ -3,7 +3,7 @@ from django.conf import settings
 from django.contrib.auth.forms import AuthenticationForm
 from django.utils import timezone
 
-from drp.models import DRP, Domaine, Facture, Fournisseur, Invitation, Proforma
+from drp.models import DRP, Domaine, ExpressionBesoin, Facture, Fournisseur, Invitation, Proforma
 
 
 class DomaineForm(forms.ModelForm):
@@ -215,6 +215,38 @@ class FactureForm(forms.ModelForm):
             "montant": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0.01"}),
             "date_facture": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
         }
+
+
+class ExpressionBesoinForm(forms.ModelForm):
+    class Meta:
+        model = ExpressionBesoin
+        fields = ("produit", "quantite", "unite", "domaine", "description")
+        widgets = {
+            "produit": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Ex. Pompes centrifuges, Câbles électriques 16mm²…",
+            }),
+            "quantite": forms.NumberInput(attrs={"class": "form-control", "min": "1"}),
+            "unite": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Ex. unité, kg, litre, m², rouleau…",
+            }),
+            "domaine": forms.Select(attrs={"class": "form-select"}),
+            "description": forms.Textarea(attrs={
+                "class": "form-control",
+                "rows": 4,
+                "placeholder": "Justification du besoin, spécifications techniques, urgence…",
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["produit"].label = "Produit / Service"
+        self.fields["quantite"].label = "Quantité"
+        self.fields["unite"].label = "Unité (optionnel)"
+        self.fields["domaine"].label = "Domaine"
+        self.fields["domaine"].empty_label = "— Sélectionner un domaine —"
+        self.fields["description"].label = "Description / Justification"
 
 
 class SelectWinnerForm(forms.Form):

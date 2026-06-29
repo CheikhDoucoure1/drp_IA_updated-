@@ -1,0 +1,544 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Expression de besoin — Petrosen DRP</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/inter@5.2.5/index.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" crossorigin="anonymous">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <link rel="icon" href="{% static 'drp/petrosen-logo.png' %}" type="image/png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: 'Inter Variable', system-ui, sans-serif;
+      background: #f1f5f9;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Layout split ── */
+    .portal-shell {
+      display: flex;
+      flex: 1;
+      min-height: 100vh;
+    }
+
+    /* ── Panneau gauche (brand) ── */
+    .brand-panel {
+      width: 340px;
+      flex-shrink: 0;
+      background: linear-gradient(160deg, #0c2340 0%, #1a3a6b 55%, #1e4fa0 100%);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 2rem 1.75rem;
+    }
+
+    /* Logo en fond de page (watermark) */
+    .brand-watermark {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .brand-watermark img {
+      width: 85%;
+      max-width: 280px;
+      opacity: .06;
+      filter: brightness(0) invert(1);
+      transform: rotate(-10deg) scale(1.2);
+    }
+
+    /* Contenu du panneau gauche */
+    .brand-header {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      position: relative;
+      z-index: 1;
+    }
+    .brand-logo-box {
+      background: #fff;
+      border-radius: .625rem;
+      padding: .3rem .55rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,.2);
+      flex-shrink: 0;
+    }
+    .brand-logo-box img { height: 34px; display: block; }
+    .brand-header-text .brand-company {
+      font-size: .68rem; font-weight: 700;
+      letter-spacing: .1em; text-transform: uppercase;
+      color: rgba(255,255,255,.55);
+    }
+    .brand-header-text .brand-name {
+      font-size: .95rem; font-weight: 600; color: #fff;
+    }
+
+    .brand-divider {
+      height: 1px; background: rgba(255,255,255,.12);
+      margin: 1.75rem 0; position: relative; z-index: 1;
+    }
+
+    .brand-section-title {
+      font-size: .68rem; font-weight: 700;
+      letter-spacing: .09em; text-transform: uppercase;
+      color: rgba(255,255,255,.45);
+      margin-bottom: .75rem;
+      position: relative; z-index: 1;
+    }
+
+    /* Historique dans le panneau gauche */
+    .history-list { position: relative; z-index: 1; }
+
+    .history-item {
+      display: block;
+      padding: .65rem .75rem;
+      border-radius: .5rem;
+      background: rgba(255,255,255,.07);
+      border-left: 3px solid rgba(255,255,255,.2);
+      margin-bottom: .5rem;
+      text-decoration: none;
+      transition: background .15s;
+    }
+    .history-item:hover { background: rgba(255,255,255,.13); }
+    .history-item.s-en_attente { border-left-color: #60a5fa; }
+    .history-item.s-approuvee  { border-left-color: #4ade80; }
+    .history-item.s-rejetee    { border-left-color: #f87171; }
+    .history-item.s-convertie  { border-left-color: #a78bfa; }
+
+    .history-item-title {
+      font-size: .8rem; font-weight: 600; color: #fff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-bottom: .2rem;
+    }
+    .history-item-meta {
+      font-size: .7rem; color: rgba(255,255,255,.5);
+      display: flex; align-items: center; gap: .4rem;
+      flex-wrap: wrap;
+    }
+
+    .badge-history {
+      font-size: .6rem; font-weight: 700; padding: .15rem .45rem;
+      border-radius: 999px; text-transform: uppercase; letter-spacing: .04em;
+    }
+    .badge-en_attente { background: rgba(96,165,250,.25); color: #93c5fd; }
+    .badge-approuvee  { background: rgba(74,222,128,.2);  color: #86efac; }
+    .badge-rejetee    { background: rgba(248,113,113,.2); color: #fca5a5; }
+    .badge-convertie  { background: rgba(167,139,250,.2); color: #c4b5fd; }
+
+    .brand-empty {
+      text-align: center; padding: 2rem 0;
+      color: rgba(255,255,255,.3); font-size: .8rem;
+      position: relative; z-index: 1;
+    }
+    .brand-empty i { font-size: 2rem; display: block; margin-bottom: .5rem; }
+
+    /* ── Panneau droit (contenu) ── */
+    .content-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    /* Topbar */
+    .content-topbar {
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: .6rem 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      position: sticky; top: 0; z-index: 50;
+    }
+
+    .user-chip {
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .user-avatar {
+      width: 30px; height: 30px;
+      background: #2563eb; color: #fff;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .72rem; font-weight: 700;
+      flex-shrink: 0;
+    }
+    .user-name { font-size: .82rem; color: #374151; font-weight: 500; }
+
+    /* Alertes */
+    .alerts-zone { padding: 1rem 1.75rem 0; }
+
+    /* Zone formulaire */
+    .form-zone {
+      flex: 1;
+      padding: 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .form-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 1rem;
+      padding: 1.75rem;
+      max-width: 640px;
+      width: 100%;
+    }
+
+    .form-card-title {
+      font-size: 1.1rem; font-weight: 700; color: #0f172a;
+      margin-bottom: .25rem;
+    }
+    .form-card-sub {
+      font-size: .8rem; color: #64748b; margin-bottom: 1.5rem;
+    }
+
+    /* Champs du formulaire */
+    .f-label {
+      font-size: .8rem; font-weight: 600; color: #374151;
+      display: block; margin-bottom: .35rem;
+    }
+    .f-required { color: #ef4444; margin-left: .15rem; }
+    .f-optional { font-weight: 400; color: #94a3b8; font-size: .75rem; }
+
+    .f-control {
+      width: 100%;
+      border: 1.5px solid #d1d5db;
+      border-radius: .5rem;
+      padding: .6rem .9rem;
+      font-size: .88rem;
+      color: #111827;
+      background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+      font-family: inherit;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .f-control:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+    .f-control::placeholder { color: #9ca3af; }
+    select.f-control {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right .75rem center;
+      padding-right: 2.25rem;
+    }
+    textarea.f-control { resize: vertical; min-height: 100px; }
+
+    .f-error { font-size: .75rem; color: #dc2626; margin-top: .3rem; }
+
+    .f-row { display: flex; gap: .75rem; }
+    .f-row > * { flex: 1; }
+
+    .f-group { margin-bottom: 1.1rem; }
+
+    .btn-submit {
+      width: 100%; padding: .7rem;
+      background: #2563eb; color: #fff;
+      border: none; border-radius: .5rem;
+      font-size: .9rem; font-weight: 600;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: .5rem;
+      transition: background .15s, transform .1s;
+      margin-top: .5rem;
+    }
+    .btn-submit:hover { background: #1d4ed8; }
+    .btn-submit:active { transform: scale(.99); }
+
+    /* ── Mobile ── */
+    .mobile-topbar {
+      display: none;
+      background: linear-gradient(135deg, #0c2340 0%, #1a3a6b 100%);
+      padding: .75rem 1.25rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .mobile-topbar img { height: 28px; filter: brightness(0) invert(1); }
+
+    @media (max-width: 991px) {
+      .brand-panel { display: none; }
+      .mobile-topbar { display: flex; }
+      .form-zone { padding: 1.25rem 1rem; }
+      .form-card { padding: 1.25rem; }
+      .content-topbar { padding: .5rem 1rem; }
+      .alerts-zone { padding: .75rem 1rem 0; }
+    }
+    @media (max-width: 575px) {
+      .f-row { flex-direction: column; gap: 0; }
+    }
+
+    /* ── Page connexion ── */
+    .login-shell {
+      flex: 1; display: flex;
+      align-items: center; justify-content: center;
+      padding: 2rem 1rem;
+      background: #f1f5f9;
+    }
+    .login-card {
+      width: 100%; max-width: 380px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 1rem;
+      padding: 2.25rem 2rem;
+    }
+  </style>
+</head>
+<body>
+
+{% if not request.user.is_authenticated %}
+
+<header style="background:#0c2340;padding:.75rem 1.5rem;display:flex;align-items:center;gap:.75rem;">
+  <div class="brand-logo-box">
+    <img src="{% static 'drp/petrosen-logo.png' %}" alt="Petrosen">
+  </div>
+  <div>
+    <div style="font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.45);">Petrosen E&amp;P</div>
+    <div style="font-size:.88rem;font-weight:600;color:#fff;">Plateforme DRP</div>
+  </div>
+</header>
+
+<div class="login-shell">
+  <div class="login-card">
+    <div class="text-center mb-4">
+      <div style="width:52px;height:52px;background:#eff6ff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:.875rem;">
+        <i class="bi bi-person-badge" style="font-size:1.5rem;color:#2563eb;"></i>
+      </div>
+      <h1 style="font-size:1.05rem;font-weight:700;color:#0f172a;margin:0 0 .25rem;">Connexion requise</h1>
+      <p style="font-size:.82rem;color:#64748b;margin:0;">Connectez-vous pour soumettre une expression de besoin.</p>
+    </div>
+    <form method="post" action="{% url 'drp:login' %}?next={% url 'drp:portail_user' %}" novalidate>
+      {% csrf_token %}
+      {% if login_form.non_field_errors %}
+        <div class="alert alert-danger py-2 small">{{ login_form.non_field_errors }}</div>
+      {% endif %}
+      <div class="f-group">
+        <label class="f-label" for="id_username">{{ login_form.username.label }}</label>
+        {{ login_form.username }}
+        {{ login_form.username.errors }}
+      </div>
+      <div class="f-group">
+        <label class="f-label" for="id_password">{{ login_form.password.label }}</label>
+        {{ login_form.password }}
+        {{ login_form.password.errors }}
+      </div>
+      <button type="submit" class="btn-submit mt-2">
+        <i class="bi bi-box-arrow-in-right"></i>Se connecter
+      </button>
+    </form>
+    <div style="text-align:center;margin-top:1rem;">
+      <a href="{% url 'drp:accueil' %}" style="font-size:.8rem;color:#64748b;text-decoration:none;">
+        <i class="bi bi-arrow-left me-1"></i>Retour à l'accueil
+      </a>
+    </div>
+  </div>
+</div>
+
+{% else %}
+
+
+{# Topbar mobile uniquement #}
+<header class="mobile-topbar">
+  <div style="display:flex;align-items:center;gap:.6rem;">
+    <div class="brand-logo-box">
+      <img src="{% static 'drp/petrosen-logo.png' %}" alt="Petrosen">
+    </div>
+    <span style="font-size:.88rem;font-weight:600;color:#fff;">Plateforme DRP</span>
+  </div>
+  <div style="display:flex;gap:.5rem;align-items:center;">
+    <a href="{% url 'drp:accueil' %}" style="font-size:.78rem;color:rgba(255,255,255,.75);text-decoration:none;">
+      <i class="bi bi-house me-1"></i>Accueil
+    </a>
+    <form action="{% url 'drp:logout' %}" method="post" style="margin:0;">
+      {% csrf_token %}
+      <button type="submit" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:.375rem;color:#fff;font-size:.78rem;padding:.3rem .65rem;cursor:pointer;">
+        <i class="bi bi-box-arrow-right me-1"></i>Déconnexion
+      </button>
+    </form>
+  </div>
+</header>
+
+<div class="portal-shell">
+
+  {# ── Panneau gauche (brand + historique) ── #}
+  <aside class="brand-panel">
+
+    {# Watermark logo en fond #}
+    <div class="brand-watermark">
+      <img src="{% static 'drp/petrosen-logo.png' %}" alt="">
+    </div>
+
+    {# En-tête marque #}
+    <div class="brand-header">
+      <div class="brand-logo-box">
+        <img src="{% static 'drp/petrosen-logo.png' %}" alt="Petrosen">
+      </div>
+      <div class="brand-header-text">
+        <div class="brand-company">Petrosen E&amp;P</div>
+        <div class="brand-name">Plateforme DRP</div>
+      </div>
+    </div>
+
+    <div class="brand-divider"></div>
+
+    {# Section Historique #}
+    <div class="brand-section-title">Mes soumissions récentes</div>
+
+    <div class="history-list">
+      {% if mes_besoins %}
+        {% for eb in mes_besoins %}
+        <a href="{% url 'drp:besoin_detail' eb.pk %}" class="history-item s-{{ eb.statut }}">
+          <div class="d-flex justify-content-between align-items-start gap-1 mb-1">
+            <div class="history-item-title">{{ eb.produit }}</div>
+            <span class="badge-history badge-{{ eb.statut }}">{{ eb.get_statut_display }}</span>
+          </div>
+          <div class="history-item-meta">
+            <span>{{ eb.quantite }}{% if eb.unite %} {{ eb.unite }}{% endif %}</span>
+            <span>·</span>
+            <span>{{ eb.domaine.nom }}</span>
+            <span>·</span>
+            <span>{{ eb.created_at|date:"d/m/Y" }}</span>
+          </div>
+        </a>
+        {% endfor %}
+      {% else %}
+      <div class="brand-empty">
+        <i class="bi bi-clipboard"></i>
+        Aucune soumission pour le moment.
+      </div>
+      {% endif %}
+    </div>
+
+  </aside>
+
+  {# ── Panneau droit (topbar + formulaire) ── #}
+  <div class="content-panel">
+
+    {# Topbar desktop #}
+    <div class="content-topbar">
+      <a href="{% url 'drp:accueil' %}" style="display:inline-flex;align-items:center;gap:.4rem;font-size:.82rem;font-weight:500;color:#374151;text-decoration:none;padding:.35rem .7rem;border:1px solid #e2e8f0;border-radius:.4rem;background:#f8fafc;transition:background .15s;"
+         onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+        <i class="bi bi-house"></i><span>Accueil</span>
+      </a>
+      <div class="user-chip">
+        <div class="user-avatar">
+          {% if request.user.first_name %}{{ request.user.first_name|slice:":1"|upper }}{% else %}{{ request.user.get_username|slice:":1"|upper }}{% endif %}
+        </div>
+        <span class="user-name d-none d-sm-inline">{{ request.user.get_full_name|default:request.user.get_username }}</span>
+        <form action="{% url 'drp:logout' %}" method="post" style="margin:0;">
+          {% csrf_token %}
+          <button type="submit" style="display:inline-flex;align-items:center;gap:.35rem;font-size:.8rem;font-weight:500;color:#dc2626;background:#fff;border:1px solid #fecaca;border-radius:.4rem;padding:.35rem .7rem;cursor:pointer;transition:background .15s;"
+                  onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='#fff'">
+            <i class="bi bi-box-arrow-right"></i><span class="d-none d-sm-inline">Déconnexion</span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    {# Alertes #}
+    {% if messages %}
+    <div class="alerts-zone">
+      {% for message in messages %}
+      <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'debug' %}secondary{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {# Formulaire #}
+    <div class="form-zone">
+      <div class="form-card">
+        <div class="form-card-title">Nouvelle expression de besoin</div>
+        <div class="form-card-sub">Renseignez les informations ci-dessous et cliquez sur Soumettre.</div>
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {% if eb_form.non_field_errors %}
+            <div class="alert alert-danger py-2 small mb-3">{{ eb_form.non_field_errors }}</div>
+          {% endif %}
+
+          <div class="f-group">
+            <label class="f-label" for="{{ eb_form.produit.id_for_label }}">
+              Produit / Service<span class="f-required">*</span>
+            </label>
+            {{ eb_form.produit }}
+            {% if eb_form.produit.errors %}<div class="f-error">{{ eb_form.produit.errors|join:", " }}</div>{% endif %}
+          </div>
+
+          <div class="f-row">
+            <div class="f-group">
+              <label class="f-label" for="{{ eb_form.quantite.id_for_label }}">
+                Quantité<span class="f-required">*</span>
+              </label>
+              {{ eb_form.quantite }}
+              {% if eb_form.quantite.errors %}<div class="f-error">{{ eb_form.quantite.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div class="f-group">
+              <label class="f-label" for="{{ eb_form.unite.id_for_label }}">
+                Unité <span class="f-optional">(optionnel)</span>
+              </label>
+              {{ eb_form.unite }}
+            </div>
+          </div>
+
+          <div class="f-group">
+            <label class="f-label" for="{{ eb_form.domaine.id_for_label }}">
+              Domaine<span class="f-required">*</span>
+            </label>
+            {{ eb_form.domaine }}
+            {% if eb_form.domaine.errors %}<div class="f-error">{{ eb_form.domaine.errors|join:", " }}</div>{% endif %}
+            {% if not eb_form.domaine.field.queryset.exists %}
+            <div class="alert alert-warning mt-2 small py-2">
+              <i class="bi bi-exclamation-triangle me-1"></i>Aucun domaine disponible. Contactez un administrateur.
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="f-group">
+            <label class="f-label" for="{{ eb_form.description.id_for_label }}">
+              Description / Justification<span class="f-required">*</span>
+            </label>
+            {{ eb_form.description }}
+            {% if eb_form.description.errors %}<div class="f-error">{{ eb_form.description.errors|join:", " }}</div>{% endif %}
+          </div>
+
+          <button type="submit" class="btn-submit">
+            <i class="bi bi-send"></i>Soumettre l'expression de besoin
+          </button>
+        </form>
+      </div>
+    </div>
+
+  </div>{# /content-panel #}
+</div>{# /portal-shell #}
+
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<script>
+  /* Appliquer les classes f-control aux widgets Django */
+  document.querySelectorAll('input.form-control, input.form-select, select.form-select, textarea.form-control').forEach(el => {
+    el.classList.add('f-control');
+  });
+  /* Cibler aussi sans classes Bootstrap (fallback) */
+  document.querySelectorAll('.f-group input, .f-group select, .f-group textarea').forEach(el => {
+    if (!el.classList.contains('f-control')) el.classList.add('f-control');
+  });
+</script>
+</body>
+</html>

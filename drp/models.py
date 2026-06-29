@@ -118,6 +118,13 @@ class Invitation(models.Model):
     drp = models.ForeignKey(DRP, on_delete=models.CASCADE, related_name="invitations")
     token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     expiration = models.DateTimeField()
+    date_reactivation = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Réactivé jusqu'au",
+        help_text="Si renseigné, le lien reste valide jusqu'à cette date même après la clôture du DRP.",
+        
+    )
     statut = models.CharField(
         max_length=20,
         choices=Statut.choices,
@@ -136,6 +143,8 @@ class Invitation(models.Model):
         return f"{self.fournisseur} → {self.drp}"
 
     def est_expiree(self) -> bool:
+        if self.date_reactivation and timezone.now() <= self.date_reactivation:
+            return False
         return self.drp.est_limite_reponses_depassee()
 
 
@@ -160,6 +169,67 @@ class Proforma(models.Model):
 
     def __str__(self) -> str:
         return f"Proforma {self.invitation.fournisseur} ({self.prix} FCFA)"
+
+
+class ExpressionBesoin(models.Model):
+    class Statut(models.TextChoices):
+        EN_ATTENTE = "en_attente", "En attente"
+        APPROUVEE = "approuvee", "Approuvée"
+        REJETEE = "rejetee", "Rejetée"
+        CONVERTIE = "convertie", "Convertie en DRP"
+
+    reference = models.CharField(max_length=30, unique=True, editable=False, verbose_name="Référence")
+    produit = models.CharField(max_length=300, verbose_name="Produit / Service")
+    quantite = models.PositiveIntegerField(
+        default=1,
+        validators=[MinValueValidator(1)],
+        verbose_name="Quantité",
+    )
+    unite = models.CharField(max_length=50, blank=True, verbose_name="Unité", help_text="Ex. unité, kg, litre…")
+    domaine = models.ForeignKey(
+        "Domaine",
+        on_delete=models.PROTECT,
+        related_name="expressions_besoin",
+        verbose_name="Domaine",
+    )
+    description = models.TextField(verbose_name="Description / Justification")
+    statut = models.CharField(
+        max_length=20,
+        choices=Statut.choices,
+        default=Statut.EN_ATTENTE,
+    )
+    drp = models.ForeignKey(
+        "DRP",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="expressions_besoin",
+        verbose_name="DRP associée",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="expressions_besoin",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Expression de besoin"
+        verbose_name_plural = "Expressions de besoin"
+
+    def __str__(self) -> str:
+        return f"{self.reference} — {self.produit}"
+
+    def save(self, *args, **kwargs):
+        if not self.pk and not self.reference:
+            year = timezone.now().year
+            count = ExpressionBesoin.objects.filter(
+                reference__startswith=f"EB-{year}-"
+            ).count() + 1
+            self.reference = f"EB-{year}-{count:04d}"
+        super().save(*args, **kwargs)
 
 
 class Facture(models.Model):

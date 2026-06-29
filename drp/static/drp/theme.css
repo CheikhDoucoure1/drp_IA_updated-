@@ -785,3 +785,157 @@ a.drp-stat-card {
   color: var(--drp-text);
   font-weight: 600;
 }
+
+/* ========== Analyse IA — rendu structuré ========== */
+.ia-analysis {
+  font-size: 0.875rem;
+  line-height: 1.75;
+  color: var(--drp-text);
+}
+
+/* Section numérotée */
+.ia-section {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  grid-template-rows: auto auto;
+  gap: 0 0.75rem;
+  background: #f8faff;
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  border-left: 3px solid var(--drp-primary);
+  border-radius: var(--drp-radius-sm);
+  padding: 0.75rem 1rem 0.75rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.ia-section-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.35rem;
+}
+
+.ia-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  min-width: 1.6rem;
+  background: var(--drp-primary);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ia-section-title {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--drp-text);
+}
+
+.ia-section-body {
+  grid-column: 1 / -1;
+  padding-left: 2.35rem;
+  color: #334155;
+  font-size: 0.84rem;
+}
+
+.ia-section-continuation {
+  margin: 0.25rem 0 0;
+  padding-left: 2.35rem;
+  color: #334155;
+  font-size: 0.84rem;
+}
+
+.ia-section-simple {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+}
+
+/* Heading (## / ###) */
+.ia-heading {
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: var(--drp-primary-dark, #1d4ed8);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 1rem 0 0.35rem;
+}
+
+/* Paragraphe courant */
+.ia-para {
+  margin: 0.3rem 0;
+  color: #334155;
+}
+
+/* Listes */
+.ia-list {
+  margin: 0.25rem 0 0.5rem 0;
+  padding-left: 1.5rem;
+  color: #334155;
+}
+
+.ia-list li {
+  margin-bottom: 0.2rem;
+}
+
+/* Séparateur */
+.ia-divider {
+  border: none;
+  border-top: 1px dashed rgba(37, 99, 235, 0.2);
+  margin: 0.75rem 0;
+}
+
+/* Tableaux */
+.ia-table thead th {
+  background: var(--drp-primary-soft, #eff6ff);
+  color: var(--drp-primary-dark, #1d4ed8);
+  font-weight: 600;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.ia-table td {
+  font-size: 0.82rem;
+  vertical-align: middle;
+}
+
+/* Code inline */
+.ia-code {
+  background: #f1f5f9;
+  color: #0f172a;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-size: 0.8em;
+}
+
+/* Badge recommandation */
+.ia-reco-badge {
+  font-size: 0.78rem;
+  padding: 0.3em 0.7em;
+  border-radius: 6px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Modal analyse — header amélioré */
+#modalAnalyseFournisseur .modal-header {
+  background: linear-gradient(135deg, var(--drp-primary-soft, #eff6ff) 0%, #fff 100%);
+  border-bottom: 1px solid rgba(37, 99, 235, 0.15);
+}
+
+#modalAnalyseFournisseur .modal-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--drp-primary-dark, #1d4ed8);
+}
+
+#modalAnalyseFournisseur .modal-footer {
+  background: #f8faff;
+  border-top: 1px solid rgba(37, 99, 235, 0.1);
+}

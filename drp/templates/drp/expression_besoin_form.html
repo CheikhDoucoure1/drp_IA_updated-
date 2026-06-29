@@ -1,0 +1,70 @@
+{% extends "drp/base.html" %}
+{% block title %}{{ form_title }}{% endblock %}
+{% block saas_page_title %}{{ form_title }}{% endblock %}
+{% block saas_page_sub %}<p class="drp-topbar-sub d-none d-sm-block mb-0">Renseignez le produit, la quantité et le département destinataire.</p>{% endblock %}
+{% block content %}
+<div class="card drp-card">
+  <div class="card-body">
+    <form method="post" novalidate class="drp-form">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="id_produit">
+          Produit / Service <span class="text-danger">*</span>
+        </label>
+        {{ form.produit }}
+        {% if form.produit.errors %}<div class="invalid-feedback d-block">{{ form.produit.errors }}</div>{% endif %}
+        <div class="form-text">Nom précis du produit ou du service requis.</div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-sm-4">
+          <label class="form-label fw-semibold" for="id_quantite">
+            Quantité <span class="text-danger">*</span>
+          </label>
+          {{ form.quantite }}
+          {% if form.quantite.errors %}<div class="invalid-feedback d-block">{{ form.quantite.errors }}</div>{% endif %}
+        </div>
+        <div class="col-sm-8">
+          <label class="form-label fw-semibold" for="id_unite">Unité</label>
+          {{ form.unite }}
+          {% if form.unite.errors %}<div class="invalid-feedback d-block">{{ form.unite.errors }}</div>{% endif %}
+          <div class="form-text">Ex : unité, kg, litre, m², rouleau…</div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="id_domaine">
+          Domaine <span class="text-danger">*</span>
+        </label>
+        {{ form.domaine }}
+        {% if form.domaine.errors %}<div class="invalid-feedback d-block">{{ form.domaine.errors }}</div>{% endif %}
+        {% if not form.domaine.field.queryset.exists %}
+        <div class="alert alert-warning mt-2 small">
+          <i class="bi bi-exclamation-triangle me-1"></i>
+          Aucun domaine disponible.
+          <a href="{% url 'drp:domaine_create' %}">Créer un domaine</a> avant de soumettre un besoin.
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="id_description">
+          Description / Justification <span class="text-danger">*</span>
+        </label>
+        {{ form.description }}
+        {% if form.description.errors %}<div class="invalid-feedback d-block">{{ form.description.errors }}</div>{% endif %}
+        <div class="form-text">Précisez les spécifications techniques, l'urgence ou le contexte d'utilisation.</div>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 pt-2 border-top mt-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>{{ submit_label|default:"Enregistrer" }}</button>
+        <a href="{{ cancel_href }}" class="btn btn-outline-secondary">Annuler</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,146 @@
+{% extends "drp/base.html" %}
+{% block title %}{{ eb.reference }}{% endblock %}
+{% block saas_page_title %}{{ eb.reference }}{% endblock %}
+{% block saas_page_sub %}
+  <p class="drp-topbar-sub d-none d-sm-block mb-0">Expression de besoin — {{ eb.produit }}</p>
+{% endblock %}
+{% block saas_topbar_actions %}
+{% if eb.statut == "en_attente" %}
+<a href="{% url 'drp:besoin_update' eb.pk %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil me-1"></i>Modifier</a>
+{% endif %}
+{% if eb.statut == "en_attente" or eb.statut == "rejetee" %}
+<a href="{% url 'drp:besoin_delete' eb.pk %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash me-1"></i>Supprimer</a>
+{% endif %}
+{% endblock %}
+{% block content %}
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-8">
+    <div class="card drp-card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-start justify-content-between mb-3 gap-2">
+          <div>
+            <span class="text-secondary small fw-medium">{{ eb.reference }}</span>
+            <h2 class="fs-5 fw-semibold mb-0 mt-1">{{ eb.produit }}</h2>
+          </div>
+          <div>
+            {% if eb.statut == "en_attente" %}
+              <span class="badge badge-drp badge-drp-en-cours fs-6">En attente</span>
+            {% elif eb.statut == "approuvee" %}
+              <span class="badge badge-drp badge-drp-actif fs-6">Approuvée</span>
+            {% elif eb.statut == "rejetee" %}
+              <span class="badge badge-drp badge-drp-annulee fs-6">Rejetée</span>
+            {% elif eb.statut == "convertie" %}
+              <span class="badge badge-drp badge-drp-cloturee fs-6">Convertie en DRP</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <dl class="row mb-3">
+          <dt class="col-sm-4 text-secondary fw-normal small">Domaine</dt>
+          <dd class="col-sm-8 mb-2 fw-medium">{{ eb.domaine.nom }}</dd>
+
+          <dt class="col-sm-4 text-secondary fw-normal small">Quantité</dt>
+          <dd class="col-sm-8 mb-2">{{ eb.quantite }}{% if eb.unite %} <span class="text-muted">{{ eb.unite }}</span>{% endif %}</dd>
+
+          <dt class="col-sm-4 text-secondary fw-normal small">Soumis par</dt>
+          <dd class="col-sm-8 mb-2">
+            {% if eb.created_by %}
+              {{ eb.created_by.get_full_name|default:eb.created_by.get_username }}
+            {% else %}—{% endif %}
+          </dd>
+
+          <dt class="col-sm-4 text-secondary fw-normal small">Date</dt>
+          <dd class="col-sm-8 mb-2 small text-muted">{{ eb.created_at|date:"d/m/Y à H:i" }}</dd>
+
+          {% if eb.drp %}
+          <dt class="col-sm-4 text-secondary fw-normal small">DRP associée</dt>
+          <dd class="col-sm-8 mb-2">
+            <a href="{% url 'drp:drp_detail' eb.drp.pk %}">{{ eb.drp.titre }}</a>
+          </dd>
+          {% endif %}
+        </dl>
+
+        <div class="border-top pt-3 mt-2">
+          <p class="text-secondary small mb-1 fw-medium">Description / Justification</p>
+          <p class="mb-0" style="white-space: pre-line;">{{ eb.description }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card drp-card">
+      <div class="card-header border-0 pb-0 pt-3 px-3">
+        <div class="drp-card-header-lead">Actions</div>
+      </div>
+      <div class="card-body d-flex flex-column gap-2">
+        {% if eb.statut == "en_attente" %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="approuver">
+          <button type="submit" class="btn btn-success w-100">
+            <i class="bi bi-check-circle me-1"></i>Approuver
+          </button>
+        </form>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="rejeter">
+          <button type="submit" class="btn btn-outline-danger w-100">
+            <i class="bi bi-x-circle me-1"></i>Rejeter
+          </button>
+        </form>
+
+        {% elif eb.statut == "approuvee" %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="convertir">
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-arrow-right-circle me-1"></i>Créer une DRP depuis ce besoin
+          </button>
+        </form>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="rejeter">
+          <button type="submit" class="btn btn-outline-danger w-100">
+            <i class="bi bi-x-circle me-1"></i>Rejeter
+          </button>
+        </form>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="remettre_en_attente">
+          <button type="submit" class="btn btn-outline-secondary w-100">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>Remettre en attente
+          </button>
+        </form>
+
+        {% elif eb.statut == "rejetee" %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="remettre_en_attente">
+          <button type="submit" class="btn btn-outline-secondary w-100">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>Remettre en attente
+          </button>
+        </form>
+
+        {% elif eb.statut == "convertie" %}
+        {% if eb.drp %}
+        <a href="{% url 'drp:drp_detail' eb.drp.pk %}" class="btn btn-outline-primary w-100">
+          <i class="bi bi-folder2-open me-1"></i>Voir la DRP associée
+        </a>
+        {% else %}
+        <a href="{% url 'drp:drp_create' %}" class="btn btn-outline-primary w-100">
+          <i class="bi bi-plus-lg me-1"></i>Créer une DRP
+        </a>
+        {% endif %}
+        {% endif %}
+
+        <a href="{% url 'drp:besoin_list' %}" class="btn btn-outline-secondary w-100 mt-1">
+          <i class="bi bi-arrow-left me-1"></i>Retour à la liste
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

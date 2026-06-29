@@ -1,0 +1,25 @@
+{% extends "drp/base.html" %}
+{% block title %}Supprimer {{ departement.nom }}{% endblock %}
+{% block saas_page_title %}Supprimer le département{% endblock %}
+{% block content %}
+<div class="card drp-card" style="max-width: 480px;">
+  <div class="card-body">
+    <p class="mb-1">Vous êtes sur le point de supprimer le département :</p>
+    <p class="fw-semibold mb-3">{{ departement.nom }}</p>
+    {% if departement.expressions_besoin.exists %}
+    <div class="alert alert-danger small">
+      <i class="bi bi-exclamation-triangle me-1"></i>
+      Ce département est rattaché à {{ departement.expressions_besoin.count }} expression(s) de besoin. Suppression impossible.
+    </div>
+    <a href="{% url 'drp:departement_list' %}" class="btn btn-outline-secondary">Retour</a>
+    {% else %}
+    <p class="text-danger small mb-4">Cette action est irréversible.</p>
+    <form method="post" class="d-flex gap-2">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1"></i>Confirmer</button>
+      <a href="{% url 'drp:departement_list' %}" class="btn btn-outline-secondary">Annuler</a>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
