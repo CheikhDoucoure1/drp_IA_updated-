@@ -1,7 +1,7 @@
 {% extends "drp/base.html" %}
 {% block title %}{{ form_title }}{% endblock %}
 {% block saas_page_title %}{{ form_title }}{% endblock %}
-{% block saas_page_sub %}<p class="drp-topbar-sub d-none d-sm-block mb-0">Renseignez le produit, la quantité et le département destinataire.</p>{% endblock %}
+{% block saas_page_sub %}<p class="drp-topbar-sub d-none d-sm-block mb-0">Renseignez la désignation, la quantité et le domaine.</p>{% endblock %}
 {% block content %}
 <div class="card drp-card">
   <div class="card-body">
@@ -13,27 +13,18 @@
 
       <div class="mb-3">
         <label class="form-label fw-semibold" for="id_produit">
-          Produit / Service <span class="text-danger">*</span>
+          Désignation <span class="text-danger">*</span>
         </label>
         {{ form.produit }}
         {% if form.produit.errors %}<div class="invalid-feedback d-block">{{ form.produit.errors }}</div>{% endif %}
-        <div class="form-text">Nom précis du produit ou du service requis.</div>
       </div>
 
-      <div class="row g-3 mb-3">
-        <div class="col-sm-4">
-          <label class="form-label fw-semibold" for="id_quantite">
-            Quantité <span class="text-danger">*</span>
-          </label>
-          {{ form.quantite }}
-          {% if form.quantite.errors %}<div class="invalid-feedback d-block">{{ form.quantite.errors }}</div>{% endif %}
-        </div>
-        <div class="col-sm-8">
-          <label class="form-label fw-semibold" for="id_unite">Unité</label>
-          {{ form.unite }}
-          {% if form.unite.errors %}<div class="invalid-feedback d-block">{{ form.unite.errors }}</div>{% endif %}
-          <div class="form-text">Ex : unité, kg, litre, m², rouleau…</div>
-        </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="id_quantite">
+          Quantité <span class="text-danger">*</span>
+        </label>
+        {{ form.quantite }}
+        {% if form.quantite.errors %}<div class="invalid-feedback d-block">{{ form.quantite.errors }}</div>{% endif %}
       </div>
 
       <div class="mb-3">

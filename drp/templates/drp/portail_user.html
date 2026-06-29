@@ -406,7 +406,7 @@
             <span class="badge-history badge-{{ eb.statut }}">{{ eb.get_statut_display }}</span>
           </div>
           <div class="history-item-meta">
-            <span>{{ eb.quantite }}{% if eb.unite %} {{ eb.unite }}{% endif %}</span>
+            <span>{{ eb.quantite }}</span>
             <span>·</span>
             <span>{{ eb.domaine.nom }}</span>
             <span>·</span>
@@ -474,26 +474,18 @@
 
           <div class="f-group">
             <label class="f-label" for="{{ eb_form.produit.id_for_label }}">
-              Produit / Service<span class="f-required">*</span>
+              Désignation<span class="f-required">*</span>
             </label>
             {{ eb_form.produit }}
             {% if eb_form.produit.errors %}<div class="f-error">{{ eb_form.produit.errors|join:", " }}</div>{% endif %}
           </div>
 
-          <div class="f-row">
-            <div class="f-group">
-              <label class="f-label" for="{{ eb_form.quantite.id_for_label }}">
-                Quantité<span class="f-required">*</span>
-              </label>
-              {{ eb_form.quantite }}
-              {% if eb_form.quantite.errors %}<div class="f-error">{{ eb_form.quantite.errors|join:", " }}</div>{% endif %}
-            </div>
-            <div class="f-group">
-              <label class="f-label" for="{{ eb_form.unite.id_for_label }}">
-                Unité <span class="f-optional">(optionnel)</span>
-              </label>
-              {{ eb_form.unite }}
-            </div>
+          <div class="f-group">
+            <label class="f-label" for="{{ eb_form.quantite.id_for_label }}">
+              Quantité<span class="f-required">*</span>
+            </label>
+            {{ eb_form.quantite }}
+            {% if eb_form.quantite.errors %}<div class="f-error">{{ eb_form.quantite.errors|join:", " }}</div>{% endif %}
           </div>
 
           <div class="f-group">

@@ -220,17 +220,13 @@ class FactureForm(forms.ModelForm):
 class ExpressionBesoinForm(forms.ModelForm):
     class Meta:
         model = ExpressionBesoin
-        fields = ("produit", "quantite", "unite", "domaine", "description")
+        fields = ("produit", "quantite", "domaine", "description")
         widgets = {
             "produit": forms.TextInput(attrs={
                 "class": "form-control",
-                "placeholder": "Ex. Pompes centrifuges, Câbles électriques 16mm²…",
+                "placeholder": "Ex. Ordinateurs, Fournitures de bureau…",
             }),
             "quantite": forms.NumberInput(attrs={"class": "form-control", "min": "1"}),
-            "unite": forms.TextInput(attrs={
-                "class": "form-control",
-                "placeholder": "Ex. unité, kg, litre, m², rouleau…",
-            }),
             "domaine": forms.Select(attrs={"class": "form-select"}),
             "description": forms.Textarea(attrs={
                 "class": "form-control",
@@ -241,9 +237,8 @@ class ExpressionBesoinForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["produit"].label = "Produit / Service"
+        self.fields["produit"].label = "Désignation"
         self.fields["quantite"].label = "Quantité"
-        self.fields["unite"].label = "Unité (optionnel)"
         self.fields["domaine"].label = "Domaine"
         self.fields["domaine"].empty_label = "— Sélectionner un domaine —"
         self.fields["description"].label = "Description / Justification"

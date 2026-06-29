@@ -41,14 +41,14 @@
 <div class="card drp-card">
   <div class="card-header border-0 pb-0 pt-3 px-3 px-md-4">
     <div class="drp-card-header-lead">Liste des expressions de besoin</div>
-    <div class="drp-card-header-muted">Produit, département demandeur, statut et date de soumission.</div>
+    <div class="drp-card-header-muted">Désignation, domaine, statut et date de soumission.</div>
   </div>
   <div class="drp-table-wrap table-responsive">
     <table class="table table-hover align-middle">
       <thead>
         <tr>
           <th>Référence</th>
-          <th>Produit / Service</th>
+          <th>Désignation</th>
           <th>Domaine</th>
           <th>Qté</th>
           <th>Statut</th>
@@ -62,7 +62,7 @@
           <td class="fw-semibold text-secondary small">{{ eb.reference }}</td>
           <td class="fw-medium text-dark">{{ eb.produit }}</td>
           <td class="small text-muted">{{ eb.domaine.nom }}</td>
-          <td class="small">{{ eb.quantite }}{% if eb.unite %} {{ eb.unite }}{% endif %}</td>
+          <td class="small">{{ eb.quantite }}</td>
           <td>
             {% if eb.statut == "en_attente" %}
               <span class="badge badge-drp badge-drp-en-cours">En attente</span>
