@@ -9,6 +9,14 @@ from django.utils import timezone
 
 class Domaine(models.Model):
     nom = models.CharField(max_length=200, unique=True)
+    responsable = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="domaines_responsable",
+        verbose_name="Responsable",
+    )
 
     class Meta:
         ordering = ["nom"]
@@ -174,6 +182,7 @@ class Proforma(models.Model):
 class ExpressionBesoin(models.Model):
     class Statut(models.TextChoices):
         EN_ATTENTE = "en_attente", "En attente"
+        EN_ATTENTE_DG = "en_attente_dg", "En attente approbation DG"
         APPROUVEE = "approuvee", "Approuvée"
         REJETEE = "rejetee", "Rejetée"
         CONVERTIE = "convertie", "Convertie en DRP"
@@ -216,8 +225,8 @@ class ExpressionBesoin(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
-        verbose_name = "Expression de besoin"
-        verbose_name_plural = "Expressions de besoin"
+        verbose_name = "Expression des besoins"
+        verbose_name_plural = "Expressions des besoins"
 
     def __str__(self) -> str:
         return f"{self.reference} — {self.produit}"
@@ -230,6 +239,37 @@ class ExpressionBesoin(models.Model):
             ).count() + 1
             self.reference = f"EB-{year}-{count:04d}"
         super().save(*args, **kwargs)
+
+
+class PropositionEB(models.Model):
+    """Proposition de fournisseurs soumise par l'admin domaine au DG."""
+
+    expression_besoin = models.OneToOneField(
+        ExpressionBesoin,
+        on_delete=models.CASCADE,
+        related_name="proposition",
+    )
+    fournisseurs = models.ManyToManyField(
+        "Fournisseur",
+        related_name="propositions",
+        verbose_name="Fournisseurs proposés",
+    )
+    commentaire = models.TextField(blank=True, verbose_name="Commentaire / Justification")
+    soumis_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="propositions_soumises",
+        verbose_name="Soumis par",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Proposition admin"
+        verbose_name_plural = "Propositions admin"
+
+    def __str__(self) -> str:
+        return f"Proposition — {self.expression_besoin.reference}"
 
 
 class Facture(models.Model):

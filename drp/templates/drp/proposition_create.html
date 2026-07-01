@@ -1,0 +1,99 @@
+{% extends "drp/base.html" %}
+{% block title %}Proposition — {{ eb.reference }}{% endblock %}
+{% block saas_page_title %}Soumettre une proposition{% endblock %}
+{% block saas_page_sub %}
+  <p class="drp-topbar-sub d-none d-sm-block mb-0">{{ eb.reference }} — {{ eb.produit }}</p>
+{% endblock %}
+{% block content %}
+<div class="row g-3">
+
+  {# Détails du besoin #}
+  <div class="col-lg-4">
+    <div class="card drp-card">
+      <div class="card-header border-0 pb-0 pt-3 px-3">
+        <div class="drp-card-header-lead">Détails du besoin</div>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-5 text-secondary fw-normal small">Référence</dt>
+          <dd class="col-sm-7 mb-2 fw-medium">{{ eb.reference }}</dd>
+
+          <dt class="col-sm-5 text-secondary fw-normal small">Produit</dt>
+          <dd class="col-sm-7 mb-2">{{ eb.produit }}</dd>
+
+          <dt class="col-sm-5 text-secondary fw-normal small">Quantité</dt>
+          <dd class="col-sm-7 mb-2">{{ eb.quantite }}{% if eb.unite %} {{ eb.unite }}{% endif %}</dd>
+
+          <dt class="col-sm-5 text-secondary fw-normal small">Domaine</dt>
+          <dd class="col-sm-7 mb-2">{{ eb.domaine }}</dd>
+
+          <dt class="col-sm-5 text-secondary fw-normal small">Soumis par</dt>
+          <dd class="col-sm-7 mb-2">
+            {% if eb.created_by %}{{ eb.created_by.get_full_name|default:eb.created_by.get_username }}{% else %}—{% endif %}
+          </dd>
+
+          <dt class="col-sm-5 text-secondary fw-normal small">Date</dt>
+          <dd class="col-sm-7 mb-2 small text-muted">{{ eb.created_at|date:"d/m/Y à H:i" }}</dd>
+        </dl>
+        <div class="border-top pt-3 mt-2">
+          <p class="text-secondary small mb-1 fw-medium">Description / Justification</p>
+          <p class="mb-0 small" style="white-space: pre-line;">{{ eb.description }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Formulaire de proposition #}
+  <div class="col-lg-8">
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      <div class="card drp-card">
+        <div class="card-header border-0 pb-0 pt-3 px-3">
+          <div class="drp-card-header-lead">Fournisseurs proposés</div>
+          <div class="drp-card-header-muted">Sélectionnez <strong>au moins 3 fournisseurs</strong> pour ce domaine.</div>
+        </div>
+        <div class="card-body">
+          {% if form.fournisseurs.errors %}
+            <div class="alert alert-danger py-2 small">{{ form.fournisseurs.errors }}</div>
+          {% endif %}
+          <div style="max-height: 340px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: .75rem 1rem;">
+            {% for checkbox in form.fournisseurs %}
+            <div class="form-check mb-1">
+              {{ checkbox.tag }}
+              <label class="form-check-label" for="{{ checkbox.id_for_label }}">
+                {{ checkbox.choice_label }}
+              </label>
+            </div>
+            {% empty %}
+              <p class="text-muted small mb-0">Aucun fournisseur actif trouvé pour ce domaine.</p>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="card drp-card mt-3">
+        <div class="card-header border-0 pb-0 pt-3 px-3">
+          <div class="drp-card-header-lead">Commentaire <span class="text-muted fw-normal">(optionnel)</span></div>
+        </div>
+        <div class="card-body">
+          {{ form.commentaire }}
+          {% if form.commentaire.errors %}
+            <div class="text-danger small mt-1">{{ form.commentaire.errors }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-3 flex-wrap">
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-send me-1"></i>Soumettre au Directeur Général
+        </button>
+        <a href="{% url 'drp:besoin_detail' eb.pk %}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i>Annuler
+        </a>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

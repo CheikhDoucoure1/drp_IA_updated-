@@ -3,7 +3,7 @@ from django.conf import settings
 from django.contrib.auth.forms import AuthenticationForm
 from django.utils import timezone
 
-from drp.models import DRP, Domaine, ExpressionBesoin, Facture, Fournisseur, Invitation, Proforma
+from drp.models import DRP, Domaine, ExpressionBesoin, Facture, Fournisseur, Invitation, Proforma, PropositionEB
 
 
 class DomaineForm(forms.ModelForm):
@@ -242,6 +242,44 @@ class ExpressionBesoinForm(forms.ModelForm):
         self.fields["domaine"].label = "Domaine"
         self.fields["domaine"].empty_label = "— Sélectionner un domaine —"
         self.fields["description"].label = "Description / Justification"
+
+
+class PropositionEBForm(forms.ModelForm):
+    fournisseurs = forms.ModelMultipleChoiceField(
+        queryset=Fournisseur.objects.none(),
+        label="Fournisseurs proposés (minimum 3)",
+        widget=forms.CheckboxSelectMultiple(attrs={"class": "list-unstyled"}),
+        required=True,
+    )
+
+    class Meta:
+        model = PropositionEB
+        fields = ("fournisseurs", "commentaire")
+        widgets = {
+            "commentaire": forms.Textarea(attrs={
+                "class": "form-control",
+                "rows": 4,
+                "placeholder": "Justification de la sélection, observations…",
+            }),
+        }
+
+    def __init__(self, *args, domaine=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        qs = Fournisseur.objects.filter(actif=True)
+        if domaine:
+            domain_qs = qs.filter(domaines=domaine)
+            self.fields["fournisseurs"].queryset = domain_qs.order_by("nom") if domain_qs.exists() else qs.order_by("nom")
+        else:
+            self.fields["fournisseurs"].queryset = qs.order_by("nom")
+
+    def clean_fournisseurs(self):
+        qs = self.cleaned_data.get("fournisseurs")
+        if not qs or qs.count() < 3:
+            count = qs.count() if qs else 0
+            raise forms.ValidationError(
+                f"Sélectionnez au moins 3 fournisseurs ({count} sélectionné(s))."
+            )
+        return qs
 
 
 class SelectWinnerForm(forms.Form):

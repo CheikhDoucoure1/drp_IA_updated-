@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Expression de besoin — Petrosen DRP</title>
+  <title>Expression des besoins — Petrosen DRP</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/inter@5.2.5/index.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" crossorigin="anonymous">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
@@ -318,7 +318,7 @@
         <i class="bi bi-person-badge" style="font-size:1.5rem;color:#2563eb;"></i>
       </div>
       <h1 style="font-size:1.05rem;font-weight:700;color:#0f172a;margin:0 0 .25rem;">Connexion requise</h1>
-      <p style="font-size:.82rem;color:#64748b;margin:0;">Connectez-vous pour soumettre une expression de besoin.</p>
+      <p style="font-size:.82rem;color:#64748b;margin:0;">Connectez-vous pour soumettre une expression des besoins.</p>
     </div>
     <form method="post" action="{% url 'drp:login' %}?next={% url 'drp:portail_user' %}" novalidate>
       {% csrf_token %}
@@ -463,7 +463,7 @@
     {# Formulaire #}
     <div class="form-zone">
       <div class="form-card">
-        <div class="form-card-title">Nouvelle expression de besoin</div>
+        <div class="form-card-title">Nouvelle expression des besoins</div>
         <div class="form-card-sub">Renseignez les informations ci-dessous et cliquez sur Soumettre.</div>
 
         <form method="post" novalidate>
@@ -510,7 +510,7 @@
           </div>
 
           <button type="submit" class="btn-submit">
-            <i class="bi bi-send"></i>Soumettre l'expression de besoin
+            <i class="bi bi-send"></i>Soumettre l'expression des besoins
           </button>
         </form>
       </div>

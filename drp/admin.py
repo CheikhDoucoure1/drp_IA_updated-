@@ -4,7 +4,7 @@ from django.contrib import admin, messages
 from django.utils import timezone
 
 from drp.emailing import send_reactivation_email
-from drp.models import Domaine, DRP, ExpressionBesoin, Fournisseur, Invitation, Proforma
+from drp.models import Domaine, DRP, ExpressionBesoin, Fournisseur, Invitation, Proforma, PropositionEB
 
 
 @admin.register(ExpressionBesoin)
@@ -17,7 +17,9 @@ class ExpressionBesoinAdmin(admin.ModelAdmin):
 
 @admin.register(Domaine)
 class DomaineAdmin(admin.ModelAdmin):
+    list_display = ("nom", "responsable")
     search_fields = ("nom",)
+    autocomplete_fields = ("responsable",)
 
 
 @admin.register(Fournisseur)
@@ -88,3 +90,10 @@ class InvitationAdmin(admin.ModelAdmin):
 class ProformaAdmin(admin.ModelAdmin):
     list_display = ("invitation", "prix", "delai_jours", "submitted_at")
     readonly_fields = ("submitted_at",)
+
+
+@admin.register(PropositionEB)
+class PropositionEBAdmin(admin.ModelAdmin):
+    list_display = ("expression_besoin", "soumis_par", "created_at")
+    filter_horizontal = ("fournisseurs",)
+    readonly_fields = ("created_at",)

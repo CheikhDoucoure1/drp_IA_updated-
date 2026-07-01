@@ -79,6 +79,17 @@
             {% if eb.statut == "en_attente" %}
             <a href="{% url 'drp:besoin_update' eb.pk %}" class="btn btn-sm btn-outline-secondary me-1" onclick="event.stopPropagation()">Modifier</a>
             {% endif %}
+            {% if eb.statut == "approuvee" %}
+              {% if request.user.is_superuser or eb.domaine.responsable_id == request.user.pk %}
+              <form method="post" action="{% url 'drp:besoin_detail' eb.pk %}" class="d-inline" onclick="event.stopPropagation()">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="convertir">
+                <button type="submit" class="btn btn-sm btn-outline-primary me-1">
+                  <i class="bi bi-arrow-right-circle me-1"></i>Créer une DRP
+                </button>
+              </form>
+              {% endif %}
+            {% endif %}
             <a href="{% url 'drp:besoin_detail' eb.pk %}" class="btn btn-sm btn-primary" onclick="event.stopPropagation()">Détail</a>
           </td>
         </tr>
@@ -90,7 +101,7 @@
               Aucune expression pour ce filtre.
               <a href="{% url 'drp:besoin_list' %}" class="d-block mt-2">Voir toutes les expressions</a>
             {% else %}
-              Aucune expression de besoin. <a href="{% url 'drp:besoin_create' %}">Créer la première</a>.
+              Aucune expression des besoins. <a href="{% url 'drp:besoin_create' %}">Créer la première</a>.
             {% endif %}
           </td>
         </tr>

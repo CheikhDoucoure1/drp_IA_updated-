@@ -22,7 +22,16 @@ from django.views.generic import (
 )
 from django_ratelimit.decorators import ratelimit
 
-from drp.emailing import send_invitation_email, send_non_selection_email, send_relance_email, send_selection_email
+from drp.emailing import (
+    send_decision_dg,
+    send_eb_rejetee_par_admin,
+    send_expression_besoin_notification,
+    send_invitation_email,
+    send_non_selection_email,
+    send_proposition_dg,
+    send_relance_email,
+    send_selection_email,
+)
 from drp.forms import (
     BuyerLoginForm,
     DRPChangeStatutForm,
@@ -33,10 +42,11 @@ from drp.forms import (
     FactureForm,
     FournisseurForm,
     ProformaResponseForm,
+    PropositionEBForm,
     SelectWinnerForm,
 )
 from drp.mixins import ResponsableAchatRequiredMixin, user_is_responsable_achat
-from drp.models import Domaine, DRP, ExpressionBesoin, Facture, Fournisseur, Invitation, Proforma
+from drp.models import Domaine, DRP, ExpressionBesoin, Facture, Fournisseur, Invitation, Proforma, PropositionEB
 from drp.services.analyse import analyser_fournisseur_complet, analyser_proforma_pdf, generer_analyse_ia
 from drp.services.classement import classement_proformas
 
@@ -62,7 +72,7 @@ class AccueilView(View):
 
 
 class PortailUserView(View):
-    """Portail utilisateur : connexion + formulaire d'expression de besoin."""
+    """Portail utilisateur : connexion + formulaire d'expression des besoins."""
 
     template_name = "drp/portail_user.html"
 
@@ -78,7 +88,8 @@ class PortailUserView(View):
             eb = form.save(commit=False)
             eb.created_by = request.user
             eb.save()
-            messages.success(request, f"Votre expression de besoin {eb.reference} a été soumise avec succès.")
+            send_expression_besoin_notification(eb, request)
+            messages.success(request, f"Votre expression des besoins {eb.reference} a été soumise avec succès.")
             return redirect("drp:portail_user")
         ctx = self._context(request)
         ctx["eb_form"] = form
@@ -648,10 +659,16 @@ class ExpressionBesoinListView(LoginRequiredMixin, ResponsableAchatRequiredMixin
     template_name = "drp/expression_besoin_list.html"
     context_object_name = "expressions"
 
-    def get_queryset(self):
+    def _base_qs(self):
+        from django.db.models import Q
         qs = ExpressionBesoin.objects.select_related("domaine", "created_by", "drp")
-        if not self.request.user.is_superuser:
-            qs = qs.filter(created_by=self.request.user)
+        if self.request.user.is_superuser:
+            return qs
+        domaines_geres = Domaine.objects.filter(responsable=self.request.user)
+        return qs.filter(Q(created_by=self.request.user) | Q(domaine__in=domaines_geres))
+
+    def get_queryset(self):
+        qs = self._base_qs()
         statut = self.request.GET.get("statut", "")
         valid_statuts = {choice.value for choice in ExpressionBesoin.Statut}
         if statut in valid_statuts:
@@ -662,9 +679,7 @@ class ExpressionBesoinListView(LoginRequiredMixin, ResponsableAchatRequiredMixin
         ctx = super().get_context_data(**kwargs)
         ctx["filtre_statut"] = self.request.GET.get("statut", "")
         ctx["Statut"] = ExpressionBesoin.Statut
-        all_qs = ExpressionBesoin.objects.all()
-        if not self.request.user.is_superuser:
-            all_qs = all_qs.filter(created_by=self.request.user)
+        all_qs = self._base_qs()
         ctx["total"] = all_qs.count()
         ctx["nb_en_attente"] = all_qs.filter(statut=ExpressionBesoin.Statut.EN_ATTENTE).count()
         ctx["nb_approuvees"] = all_qs.filter(statut=ExpressionBesoin.Statut.APPROUVEE).count()
@@ -689,7 +704,7 @@ class ExpressionBesoinCreateView(LoginRequiredMixin, ResponsableAchatRequiredMix
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         eb = form.save()
-        messages.success(self.request, f"Expression de besoin {eb.reference} soumise avec succès.")
+        messages.success(self.request, f"Expression des besoins {eb.reference} soumise avec succès.")
         return redirect("drp:besoin_detail", pk=eb.pk)
 
 
@@ -707,14 +722,14 @@ class ExpressionBesoinUpdateView(LoginRequiredMixin, ResponsableAchatRequiredMix
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["form_title"] = "Modifier l'expression de besoin"
+        ctx["form_title"] = "Modifier l'expression des besoins"
         ctx["submit_label"] = "Enregistrer les modifications"
         ctx["cancel_href"] = reverse("drp:besoin_detail", kwargs={"pk": self.object.pk})
         return ctx
 
     def form_valid(self, form):
         eb = form.save()
-        messages.success(self.request, f"Expression de besoin {eb.reference} mise à jour.")
+        messages.success(self.request, f"Expression des besoins {eb.reference} mise à jour.")
         return redirect("drp:besoin_detail", pk=eb.pk)
 
 
@@ -724,51 +739,86 @@ class ExpressionBesoinDetailView(LoginRequiredMixin, ResponsableAchatRequiredMix
     context_object_name = "eb"
 
     def get_queryset(self):
-        qs = ExpressionBesoin.objects.select_related("domaine", "created_by", "drp")
-        if not self.request.user.is_superuser:
-            qs = qs.filter(created_by=self.request.user)
-        return qs
+        from django.db.models import Q
+        qs = ExpressionBesoin.objects.select_related(
+            "domaine__responsable", "created_by", "drp"
+        ).prefetch_related("proposition__fournisseurs")
+        if self.request.user.is_superuser:
+            return qs
+        domaines_geres = Domaine.objects.filter(responsable=self.request.user)
+        return qs.filter(Q(created_by=self.request.user) | Q(domaine__in=domaines_geres))
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["user_est_responsable_domaine"] = (
+            self.object.domaine.responsable_id == self.request.user.pk
+        )
+        return ctx
 
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         action = request.POST.get("action")
+        eb = self.object
 
-        if action == "approuver":
-            if self.object.statut != ExpressionBesoin.Statut.EN_ATTENTE:
-                messages.error(request, "Seule une expression en attente peut être approuvée.")
-            else:
-                self.object.statut = ExpressionBesoin.Statut.APPROUVEE
-                self.object.save(update_fields=["statut"])
-                messages.success(request, f"{self.object.reference} approuvée.")
-
-        elif action == "rejeter":
-            if self.object.statut not in (ExpressionBesoin.Statut.EN_ATTENTE, ExpressionBesoin.Statut.APPROUVEE):
+        if action == "rejeter":
+            statuts_rejetables = (
+                ExpressionBesoin.Statut.EN_ATTENTE,
+                ExpressionBesoin.Statut.APPROUVEE,
+            )
+            if eb.statut not in statuts_rejetables:
                 messages.error(request, "Cette expression ne peut pas être rejetée.")
             else:
-                self.object.statut = ExpressionBesoin.Statut.REJETEE
-                self.object.save(update_fields=["statut"])
-                messages.warning(request, f"{self.object.reference} rejetée.")
+                eb.statut = ExpressionBesoin.Statut.REJETEE
+                eb.save(update_fields=["statut"])
+                send_eb_rejetee_par_admin(eb, request)
+                messages.warning(request, f"{eb.reference} rejetée.")
+
+        elif action == "approuver_dg":
+            if not request.user.is_superuser:
+                messages.error(request, "Action réservée au Directeur Général.")
+            elif eb.statut != ExpressionBesoin.Statut.EN_ATTENTE_DG:
+                messages.error(request, "Cette expression n'est pas en attente d'approbation DG.")
+            else:
+                eb.statut = ExpressionBesoin.Statut.APPROUVEE
+                eb.save(update_fields=["statut"])
+                send_decision_dg(eb, approuve=True, request=request)
+                messages.success(request, f"{eb.reference} approuvée par le Directeur Général.")
+
+        elif action == "rejeter_dg":
+            if not request.user.is_superuser:
+                messages.error(request, "Action réservée au Directeur Général.")
+            elif eb.statut != ExpressionBesoin.Statut.EN_ATTENTE_DG:
+                messages.error(request, "Cette expression n'est pas en attente d'approbation DG.")
+            else:
+                motif = request.POST.get("motif_rejet_dg", "").strip()
+                eb.statut = ExpressionBesoin.Statut.REJETEE
+                eb.save(update_fields=["statut"])
+                send_decision_dg(eb, approuve=False, motif=motif, request=request)
+                messages.warning(request, f"{eb.reference} rejetée par le Directeur Général.")
 
         elif action == "remettre_en_attente":
-            if self.object.statut not in (ExpressionBesoin.Statut.APPROUVEE, ExpressionBesoin.Statut.REJETEE):
+            if eb.statut not in (ExpressionBesoin.Statut.APPROUVEE, ExpressionBesoin.Statut.REJETEE):
                 messages.error(request, "Cette expression ne peut pas être remise en attente.")
             else:
-                self.object.statut = ExpressionBesoin.Statut.EN_ATTENTE
-                self.object.save(update_fields=["statut"])
-                messages.info(request, f"{self.object.reference} remise en attente.")
+                eb.statut = ExpressionBesoin.Statut.EN_ATTENTE
+                eb.save(update_fields=["statut"])
+                messages.info(request, f"{eb.reference} remise en attente.")
 
         elif action == "convertir":
-            if self.object.statut != ExpressionBesoin.Statut.APPROUVEE:
+            if not (request.user.is_superuser or eb.domaine.responsable_id == request.user.pk):
+                messages.error(request, "Action réservée au responsable du domaine ou au Directeur Général.")
+                return redirect("drp:besoin_detail", pk=eb.pk)
+            if eb.statut != ExpressionBesoin.Statut.APPROUVEE:
                 messages.error(request, "Seule une expression approuvée peut être convertie en DRP.")
-                return redirect("drp:besoin_detail", pk=self.object.pk)
-            self.object.statut = ExpressionBesoin.Statut.CONVERTIE
-            self.object.save(update_fields=["statut"])
-            messages.success(request, f"{self.object.reference} marquée comme convertie. Complétez la DRP ci-dessous.")
+                return redirect("drp:besoin_detail", pk=eb.pk)
+            eb.statut = ExpressionBesoin.Statut.CONVERTIE
+            eb.save(update_fields=["statut"])
+            messages.success(request, f"{eb.reference} marquée comme convertie. Complétez la DRP ci-dessous.")
             params = urlencode({
-                "titre": self.object.produit,
+                "titre": eb.produit,
                 "description": (
-                    f"Besoin exprimé par le domaine {self.object.domaine.nom}.\n\n"
-                    f"{self.object.description}"
+                    f"Besoin exprimé par le domaine {eb.domaine.nom}.\n\n"
+                    f"{eb.description}"
                 ),
             })
             return redirect(f"{reverse('drp:drp_create')}?{params}")
@@ -776,7 +826,7 @@ class ExpressionBesoinDetailView(LoginRequiredMixin, ResponsableAchatRequiredMix
         else:
             messages.error(request, "Action non reconnue.")
 
-        return redirect("drp:besoin_detail", pk=self.object.pk)
+        return redirect("drp:besoin_detail", pk=eb.pk)
 
 
 class ExpressionBesoinDeleteView(LoginRequiredMixin, ResponsableAchatRequiredMixin, DeleteView):
@@ -794,8 +844,51 @@ class ExpressionBesoinDeleteView(LoginRequiredMixin, ResponsableAchatRequiredMix
         return qs
 
     def delete(self, request, *args, **kwargs):
-        messages.success(request, "L'expression de besoin a été supprimée.")
+        messages.success(request, "L'expression des besoins a été supprimée.")
         return super().delete(request, *args, **kwargs)
+
+
+class PropositionEBCreateView(LoginRequiredMixin, View):
+    """Formulaire permettant à l'admin domaine de soumettre une proposition de fournisseurs au DG."""
+
+    template_name = "drp/proposition_create.html"
+
+    def _get_eb(self, pk):
+        return get_object_or_404(
+            ExpressionBesoin.objects.select_related("domaine__responsable", "created_by"),
+            pk=pk,
+            statut=ExpressionBesoin.Statut.EN_ATTENTE,
+        )
+
+    def _check_access(self, request, eb):
+        from django.core.exceptions import PermissionDenied
+        if not (request.user.is_superuser or eb.domaine.responsable_id == request.user.pk):
+            raise PermissionDenied
+
+    def get(self, request, pk, *args, **kwargs):
+        eb = self._get_eb(pk)
+        self._check_access(request, eb)
+        instance = PropositionEB.objects.filter(expression_besoin=eb).first()
+        form = PropositionEBForm(domaine=eb.domaine, instance=instance)
+        return render(request, self.template_name, {"eb": eb, "form": form})
+
+    def post(self, request, pk, *args, **kwargs):
+        eb = self._get_eb(pk)
+        self._check_access(request, eb)
+        instance = PropositionEB.objects.filter(expression_besoin=eb).first()
+        form = PropositionEBForm(request.POST, domaine=eb.domaine, instance=instance)
+        if form.is_valid():
+            prop = form.save(commit=False)
+            prop.expression_besoin = eb
+            prop.soumis_par = request.user
+            prop.save()
+            form.save_m2m()
+            eb.statut = ExpressionBesoin.Statut.EN_ATTENTE_DG
+            eb.save(update_fields=["statut"])
+            send_proposition_dg(eb, prop, request)
+            messages.success(request, f"Proposition soumise au Directeur Général pour {eb.reference}.")
+            return redirect("drp:besoin_detail", pk=eb.pk)
+        return render(request, self.template_name, {"eb": eb, "form": form})
 
 
 class AnalyserProformaPDFView(LoginRequiredMixin, ResponsableAchatRequiredMixin, View):

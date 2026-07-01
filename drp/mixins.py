@@ -9,7 +9,10 @@ def user_is_responsable_achat(user) -> bool:
         return False
     if user.is_superuser:
         return True
-    return user.groups.filter(name=RESPONSABLE_ACHAT_GROUP_NAME).exists()
+    if user.groups.filter(name=RESPONSABLE_ACHAT_GROUP_NAME).exists():
+        return True
+    from drp.models import Domaine
+    return Domaine.objects.filter(responsable=user).exists()
 
 
 class ResponsableAchatRequiredMixin(UserPassesTestMixin):

@@ -29,6 +29,7 @@ urlpatterns = [
     path("besoins/<int:pk>/", views.ExpressionBesoinDetailView.as_view(), name="besoin_detail"),
     path("besoins/<int:pk>/modifier/", views.ExpressionBesoinUpdateView.as_view(), name="besoin_update"),
     path("besoins/<int:pk>/supprimer/", views.ExpressionBesoinDeleteView.as_view(), name="besoin_delete"),
+    path("besoins/<int:pk>/proposition/", views.PropositionEBCreateView.as_view(), name="proposition_create"),
     path("analyse/", views.AnalyseComparativeView.as_view(), name="analyse_comparative"),
     path("proforma/<int:pk>/analyser-pdf/", views.AnalyserProformaPDFView.as_view(), name="proforma_analyser_pdf"),
     path("proforma/<int:pk>/analyser-fournisseur/", views.AnalyserFournisseurIAView.as_view(), name="proforma_analyser_fournisseur"),

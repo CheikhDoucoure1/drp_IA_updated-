@@ -2,7 +2,7 @@
 {% block title %}{{ eb.reference }}{% endblock %}
 {% block saas_page_title %}{{ eb.reference }}{% endblock %}
 {% block saas_page_sub %}
-  <p class="drp-topbar-sub d-none d-sm-block mb-0">Expression de besoin — {{ eb.produit }}</p>
+  <p class="drp-topbar-sub d-none d-sm-block mb-0">Expression des besoins — {{ eb.produit }}</p>
 {% endblock %}
 {% block saas_topbar_actions %}
 {% if eb.statut == "en_attente" %}
@@ -15,6 +15,8 @@
 {% block content %}
 
 <div class="row g-3 mb-4">
+
+  {# Colonne principale — informations du besoin #}
   <div class="col-lg-8">
     <div class="card drp-card h-100">
       <div class="card-body">
@@ -26,6 +28,8 @@
           <div>
             {% if eb.statut == "en_attente" %}
               <span class="badge badge-drp badge-drp-en-cours fs-6">En attente</span>
+            {% elif eb.statut == "en_attente_dg" %}
+              <span class="badge badge-drp badge-drp-en-cours fs-6" style="background:#f59e0b;color:#fff;">En attente DG</span>
             {% elif eb.statut == "approuvee" %}
               <span class="badge badge-drp badge-drp-actif fs-6">Approuvée</span>
             {% elif eb.statut == "rejetee" %}
@@ -41,7 +45,7 @@
           <dd class="col-sm-8 mb-2 fw-medium">{{ eb.domaine.nom }}</dd>
 
           <dt class="col-sm-4 text-secondary fw-normal small">Quantité</dt>
-          <dd class="col-sm-8 mb-2">{{ eb.quantite }}</dd>
+          <dd class="col-sm-8 mb-2">{{ eb.quantite }}{% if eb.unite %} {{ eb.unite }}{% endif %}</dd>
 
           <dt class="col-sm-4 text-secondary fw-normal small">Soumis par</dt>
           <dd class="col-sm-8 mb-2">
@@ -69,70 +73,113 @@
     </div>
   </div>
 
+  {# Colonne Actions #}
   <div class="col-lg-4">
     <div class="card drp-card">
       <div class="card-header border-0 pb-0 pt-3 px-3">
         <div class="drp-card-header-lead">Actions</div>
       </div>
       <div class="card-body d-flex flex-column gap-2">
+
+        {# ── En attente : boutons pour l'admin domaine ── #}
         {% if eb.statut == "en_attente" %}
-        <form method="post">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="approuver">
-          <button type="submit" class="btn btn-success w-100">
-            <i class="bi bi-check-circle me-1"></i>Approuver
-          </button>
-        </form>
-        <form method="post">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="rejeter">
-          <button type="submit" class="btn btn-outline-danger w-100">
-            <i class="bi bi-x-circle me-1"></i>Rejeter
-          </button>
-        </form>
+          {% if user_est_responsable_domaine or request.user.is_superuser %}
+            <a href="{% url 'drp:proposition_create' eb.pk %}" class="btn btn-primary w-100">
+              <i class="bi bi-send me-1"></i>Avis DG
+            </a>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="rejeter">
+              <button type="submit" class="btn btn-outline-danger w-100">
+                <i class="bi bi-x-circle me-1"></i>Rejeter
+              </button>
+            </form>
+          {% else %}
+            <div class="text-center py-2">
+              <i class="bi bi-hourglass-split text-secondary" style="font-size:1.4rem;"></i>
+              <p class="small text-muted mt-2 mb-0">En attente de traitement par le responsable du domaine.</p>
+            </div>
+          {% endif %}
 
+        {# ── En attente DG : boutons pour le Directeur Général ── #}
+        {% elif eb.statut == "en_attente_dg" %}
+          {% if request.user.is_superuser %}
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="approuver_dg">
+              <button type="submit" class="btn btn-success w-100">
+                <i class="bi bi-check-circle me-1"></i>Approuver
+              </button>
+            </form>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="rejeter_dg">
+              <div class="mb-2">
+                <textarea name="motif_rejet_dg" class="form-control form-control-sm" rows="2"
+                  placeholder="Motif du rejet (optionnel)…"></textarea>
+              </div>
+              <button type="submit" class="btn btn-outline-danger w-100">
+                <i class="bi bi-x-circle me-1"></i>Rejeter
+              </button>
+            </form>
+          {% else %}
+            <div class="text-center py-2">
+              <i class="bi bi-hourglass-split text-warning" style="font-size:1.4rem;"></i>
+              <p class="small text-muted mt-2 mb-0">Proposition soumise. En attente de la décision du Directeur Général.</p>
+            </div>
+          {% endif %}
+
+        {# ── Approuvée : convertir en DRP ── #}
         {% elif eb.statut == "approuvee" %}
-        <form method="post">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="convertir">
-          <button type="submit" class="btn btn-primary w-100">
-            <i class="bi bi-arrow-right-circle me-1"></i>Créer une DRP depuis ce besoin
-          </button>
-        </form>
-        <form method="post">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="rejeter">
-          <button type="submit" class="btn btn-outline-danger w-100">
-            <i class="bi bi-x-circle me-1"></i>Rejeter
-          </button>
-        </form>
-        <form method="post">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="remettre_en_attente">
-          <button type="submit" class="btn btn-outline-secondary w-100">
-            <i class="bi bi-arrow-counterclockwise me-1"></i>Remettre en attente
-          </button>
-        </form>
+          {% if user_est_responsable_domaine or request.user.is_superuser %}
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="convertir">
+              <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-arrow-right-circle me-1"></i>Créer une DRP depuis ce besoin
+              </button>
+            </form>
+          {% endif %}
+          {% if request.user.is_superuser %}
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="rejeter">
+              <button type="submit" class="btn btn-outline-danger w-100">
+                <i class="bi bi-x-circle me-1"></i>Rejeter
+              </button>
+            </form>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="remettre_en_attente">
+              <button type="submit" class="btn btn-outline-secondary w-100">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>Remettre en attente
+              </button>
+            </form>
+          {% endif %}
 
+        {# ── Rejetée ── #}
         {% elif eb.statut == "rejetee" %}
-        <form method="post">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="remettre_en_attente">
-          <button type="submit" class="btn btn-outline-secondary w-100">
-            <i class="bi bi-arrow-counterclockwise me-1"></i>Remettre en attente
-          </button>
-        </form>
+          {% if request.user.is_superuser %}
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="remettre_en_attente">
+              <button type="submit" class="btn btn-outline-secondary w-100">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>Remettre en attente
+              </button>
+            </form>
+          {% endif %}
 
+        {# ── Convertie en DRP ── #}
         {% elif eb.statut == "convertie" %}
-        {% if eb.drp %}
-        <a href="{% url 'drp:drp_detail' eb.drp.pk %}" class="btn btn-outline-primary w-100">
-          <i class="bi bi-folder2-open me-1"></i>Voir la DRP associée
-        </a>
-        {% else %}
-        <a href="{% url 'drp:drp_create' %}" class="btn btn-outline-primary w-100">
-          <i class="bi bi-plus-lg me-1"></i>Créer une DRP
-        </a>
-        {% endif %}
+          {% if eb.drp %}
+            <a href="{% url 'drp:drp_detail' eb.drp.pk %}" class="btn btn-outline-primary w-100">
+              <i class="bi bi-folder2-open me-1"></i>Voir la DRP associée
+            </a>
+          {% elif request.user.is_superuser %}
+            <a href="{% url 'drp:drp_create' %}" class="btn btn-outline-primary w-100">
+              <i class="bi bi-plus-lg me-1"></i>Créer une DRP
+            </a>
+          {% endif %}
         {% endif %}
 
         <a href="{% url 'drp:besoin_list' %}" class="btn btn-outline-secondary w-100 mt-1">
@@ -141,6 +188,39 @@
       </div>
     </div>
   </div>
+
 </div>
+
+{# ── Proposition de l'admin domaine (visible quand en attente DG) ── #}
+{% if eb.statut == "en_attente_dg" or eb.statut == "approuvee" or eb.statut == "rejetee" %}
+{% with prop=eb.proposition %}
+{% if prop %}
+<div class="card drp-card mb-4">
+  <div class="card-header border-0 pb-0 pt-3 px-3">
+    <div class="drp-card-header-lead">Proposition de l'administrateur domaine</div>
+    <div class="drp-card-header-muted">
+      Soumis par
+      {% if prop.soumis_par %}{{ prop.soumis_par.get_full_name|default:prop.soumis_par.get_username }}{% else %}—{% endif %}
+      le {{ prop.created_at|date:"d/m/Y à H:i" }}
+    </div>
+  </div>
+  <div class="card-body">
+    <p class="fw-medium mb-2">Fournisseurs proposés ({{ prop.fournisseurs.count }}) :</p>
+    <ul class="mb-0">
+      {% for f in prop.fournisseurs.all %}
+      <li>{{ f.nom }} — <span class="text-muted small">{{ f.email }}</span></li>
+      {% endfor %}
+    </ul>
+    {% if prop.commentaire %}
+    <div class="border-top mt-3 pt-3">
+      <p class="text-secondary small mb-1 fw-medium">Commentaire</p>
+      <p class="mb-0" style="white-space: pre-line;">{{ prop.commentaire }}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endwith %}
+{% endif %}
 
 {% endblock %}

@@ -85,8 +85,8 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
-                "verbose_name": "Expression de besoin",
-                "verbose_name_plural": "Expressions de besoin",
+                "verbose_name": "Expression des besoins",
+                "verbose_name_plural": "Expressions des besoins",
                 "ordering": ["-created_at"],
             },
         ),
